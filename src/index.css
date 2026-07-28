@@ -37,3 +37,12 @@
   border-radius: 4px;
   cursor: text !important;
 }
+
+.campus-frame {
+  background: linear-gradient(145deg, rgba(255,255,255,.95), rgba(232,244,241,.9));
+  box-shadow: 0 1px 2px rgba(17,28,27,.04), 0 22px 60px -42px rgba(17,70,62,.45);
+}
+
+@media (max-width: 760px) {
+  .campus-label { transform: translate(-50%, -50%) scale(.82); }
+}

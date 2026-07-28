@@ -79,9 +79,20 @@ export function ContentEditor() {
   const { data: rows = [] } = useQuery({
     queryKey: ['app-texts'],
     queryFn: listAppTexts,
-    enabled: can('settings.manage'),
+    enabled: Boolean(userId),
   })
   const values = useMemo(() => new Map(rows.map((row) => [row.key, row.value])), [rows])
+
+  useEffect(() => {
+    if (!userId) return
+    const channel = supabase
+      .channel('app-texts-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_texts' }, () => {
+        qc.invalidateQueries({ queryKey: ['app-texts'] })
+      })
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [qc, userId])
 
   useEffect(() => {
     const root = document.getElementById('root')
@@ -186,7 +197,7 @@ export function ContentEditor() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="font-semibold">Измени текст</h2>
-                <p className="mt-1 text-xs text-ink-soft">Измената се зачувува за ова место во апликацијата.</p>
+                <p className="mt-1 text-xs text-ink-soft">Измената веднаш ќе се прикаже кај сите најавени корисници.</p>
               </div>
               <button className="btn-ghost h-8 w-8 px-0" onClick={() => setSelected(null)} aria-label="Затвори"><X size={15} /></button>
             </div>

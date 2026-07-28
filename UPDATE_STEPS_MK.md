@@ -67,3 +67,12 @@ Netlify автоматски ќе почне нов deployment.
 - малото моливче е долу десно;
 - Поставки дозволува промена на име, позиција, профилна слика и лозинка;
 - кампусот на Почетна е поширок и понизок.
+
+## Дополнителен update 0006
+
+За multi-market задачи, realtime менување текст и зацврстена приватност на „Мој ден“:
+
+1. Supabase → SQL Editor → New query.
+2. Копирај ја содржината од `supabase/migrations/0006_multi_market_realtime_and_my_day_privacy.sql`.
+3. Кликни **Run**.
+4. Потоа направи нов Netlify deploy од последниот GitHub commit.

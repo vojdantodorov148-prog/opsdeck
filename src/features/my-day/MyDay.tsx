@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { addWeeks } from 'date-fns'
-import { ChevronLeft, ChevronRight, Plus, GripVertical } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, GripVertical, LockKeyhole } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader, Loading, ErrorNote } from '@/components/ui/Bits'
 import { TaskDrawer } from '@/features/tasks/TaskDrawer'
@@ -77,7 +77,7 @@ export function MyDay() {
     <div className="max-w-[1000px]">
       <PageHeader
         title="Мој ден"
-        subtitle="Твојата недела. Службените задачи се додаваат автоматски, а личните ги внесуваш сам."
+        subtitle="Твојата приватна недела. Само ти го гледаш овој распоред; службените задачи се додаваат автоматски."
         action={
           <div className="flex items-center gap-1">
             <button className="btn-quiet h-9 w-9 px-0" onClick={() => setAnchor((a) => addWeeks(a, -1))} aria-label="Претходна недела"><ChevronLeft size={16} /></button>
@@ -87,7 +87,12 @@ export function MyDay() {
         }
       />
 
-      <p className="-mt-3 mb-5 text-sm text-ink-soft">{weekLabel(anchor)}</p>
+      <div className="-mt-3 mb-5 flex items-center justify-between gap-3">
+        <p className="text-sm text-ink-soft">{weekLabel(anchor)}</p>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-panel px-2.5 py-1 text-[11px] text-ink-soft">
+          <LockKeyhole size={12} /> Приватно за твојот акаунт
+        </span>
+      </div>
 
       {error ? <ErrorNote error={error} /> : isLoading ? <Loading rows={8} /> : (
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>

@@ -1,32 +1,50 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { ExternalLink, ArrowLeft } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ExternalLink, ArrowLeft, Trash2 } from 'lucide-react'
 import { Loading, ErrorNote, Badge, EmptyState } from '@/components/ui/Bits'
+import { Modal } from '@/components/ui/Modal'
 import { TaskList } from '@/features/tasks/TaskList'
 import { TaskDrawer } from '@/features/tasks/TaskDrawer'
 import { TestCellDrawer } from '@/features/testing/TestCellDrawer'
-import { getProduct, listTests } from '@/services/products'
+import { deleteProduct, getProduct, listTests } from '@/services/products'
 import { listMarkets } from '@/services/reference'
 import { listTasks } from '@/services/tasks'
 import { listNotes } from '@/services/signal'
 import { PRODUCT_STATUS, TEST_STATUS } from '@/lib/status'
 import { useActions } from '@/app/actions'
+import { useSession } from '@/features/auth/session'
+import { toast } from 'sonner'
 
 const TABS = ['Преглед', 'Пазари', 'Линкови', 'Активна работа', 'Белешки'] as const
 
 export function ProductDetail() {
   const { id = '' } = useParams()
   const actions = useActions()
+  const { can } = useSession()
+  const navigate = useNavigate()
+  const qc = useQueryClient()
   const [tab, setTab] = useState<(typeof TABS)[number]>('Преглед')
   const [openTask, setOpenTask] = useState<string | null>(null)
   const [cell, setCell] = useState<{ productId: string; marketId: string } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const { data: product, isLoading, error } = useQuery({ queryKey: ['product', id], queryFn: () => getProduct(id), enabled: Boolean(id) })
   const { data: markets = [] } = useQuery({ queryKey: ['markets'], queryFn: listMarkets })
   const { data: tests = [] } = useQuery({ queryKey: ['tests'], queryFn: listTests })
   const { data: tasks = [] } = useQuery({ queryKey: ['tasks', { product: id }], queryFn: () => listTasks({ product: id }) })
   const { data: notes = [] } = useQuery({ queryKey: ['notes', { product: id }], queryFn: () => listNotes({ productId: id }) })
+
+  const remove = useMutation({
+    mutationFn: () => deleteProduct(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['tests'] })
+      toast.success('Производот е избришан')
+      navigate('/products')
+    },
+    onError: (deleteError: Error) => toast.error(deleteError.message),
+  })
 
   if (error) return <ErrorNote error={error} />
   if (isLoading || !product) return <Loading rows={6} />
@@ -53,6 +71,11 @@ export function ProductDetail() {
         </div>
         <div className="flex items-center gap-2">
           <Badge className="bg-panel border-line text-ink-soft">{PRODUCT_STATUS[product.status]}</Badge>
+          {can('products.manage') && (
+            <button className="btn-ghost h-10 w-10 px-0 text-ink-soft hover:bg-red-50 hover:text-red-600" onClick={() => setConfirmDelete(true)} aria-label="Избриши производ" title="Избриши производ">
+              <Trash2 size={16} />
+            </button>
+          )}
           <button className="btn-quiet" onClick={() => actions.open('start-test', { productId: id })}>Започни тест</button>
           <button className="btn-primary" onClick={() => actions.open('give-task', { productId: id })}>Додели задача</button>
         </div>
@@ -154,6 +177,20 @@ export function ProductDetail() {
 
       <TaskDrawer taskId={openTask} onClose={() => setOpenTask(null)} />
       <TestCellDrawer cell={cell} onClose={() => setCell(null)} />
+      <Modal
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Избриши производ"
+        description="Оваа акција е трајна. Тестовите, линковите и белешките за производот ќе бидат избришани."
+        footer={<div className="flex justify-end gap-2">
+          <button className="btn-quiet" onClick={() => setConfirmDelete(false)}>Откажи</button>
+          <button className="btn bg-red-600 text-white hover:bg-red-700 disabled:opacity-40" disabled={remove.isPending} onClick={() => remove.mutate()}>
+            {remove.isPending ? 'Се брише…' : 'Избриши трајно'}
+          </button>
+        </div>}
+      >
+        <p className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-800">Сигурно сакаш да го избришеш <strong>{product.name}</strong>?</p>
+      </Modal>
     </div>
   )
 }

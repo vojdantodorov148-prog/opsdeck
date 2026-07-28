@@ -30,6 +30,12 @@ export async function saveProduct(product: Partial<Product>) {
   return data as Product
 }
 
+
+export async function deleteProduct(id: string) {
+  const { error } = await supabase.from('products').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function listTests() {
   const { data, error } = await supabase.from('product_market_tests').select('*')
   if (error) throw error

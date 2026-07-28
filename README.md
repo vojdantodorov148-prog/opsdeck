@@ -79,3 +79,14 @@ Product Testing и страницата на производот го чита�
 ## Update без Terminal
 
 Види `UPDATE_STEPS_MK.md`.
+
+## Update 1.1 — Multi-market work and realtime copy
+
+- Multi-select markets in Give Task
+- Mixed landing/creative deliverables split into the correct factories
+- Product deletion with confirmation
+- Private My Day RPC scoped to the signed-in user
+- Realtime interface text overrides
+- Wider, lower and more detailed gamified campus
+
+Run `supabase/migrations/0006_multi_market_realtime_and_my_day_privacy.sql` after updating the code.

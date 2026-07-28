@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { Department, TaskStatus, TaskWithRelations } from '@/types/db'
-import type { DeliverableDraft } from '@/lib/deliverables'
+import { departmentFor, describeDeliverables, type DeliverableDraft } from '@/lib/deliverables'
 
 const SELECT = `
   *,
@@ -66,6 +66,72 @@ export async function createAssignment(input: AssignmentInput) {
   })
   if (error) throw error
   return data as string
+}
+
+
+export interface AssignmentBundleMarket {
+  id: string
+  name: string
+  code?: string
+}
+
+export interface AssignmentBundleInput {
+  productId?: string | null
+  productName?: string | null
+  markets: AssignmentBundleMarket[]
+  assignedTo: string
+  deliverables: DeliverableDraft[]
+  dueDate?: string | null
+  notes?: string | null
+  testId?: string | null
+}
+
+const DEPARTMENT_TITLE: Record<Department, string> = {
+  landing: 'Лендинг',
+  creative: 'Креативи',
+  testing: 'Тестирање',
+  general: 'Општо',
+}
+
+/**
+ * One Quick Action can contain several markets and several kinds of work.
+ * We fan it out into one task per market and department so every item appears
+ * in the correct factory while the user only submits the form once.
+ */
+export async function createAssignmentBundle(input: AssignmentBundleInput) {
+  const grouped = new Map<Department, DeliverableDraft[]>()
+  input.deliverables
+    .filter((item) => item.quantity > 0)
+    .forEach((item) => {
+      const department = departmentFor(item.type)
+      grouped.set(department, [...(grouped.get(department) ?? []), item])
+    })
+
+  const targets = input.markets.length > 0
+    ? input.markets
+    : [{ id: '', name: '', code: '' }]
+  const splitByDepartment = grouped.size > 1
+  const created: string[] = []
+
+  for (const market of targets) {
+    for (const [department, deliverables] of grouped) {
+      const base = [input.productName, market.name].filter(Boolean).join(' — ')
+      const fallback = describeDeliverables(deliverables) || 'Задача'
+      const title = `${base || fallback}${splitByDepartment ? ` · ${DEPARTMENT_TITLE[department]}` : ''}`
+      created.push(await createAssignment({
+        title,
+        assignedTo: input.assignedTo,
+        deliverables,
+        productId: input.productId ?? null,
+        marketId: market.id || null,
+        dueDate: input.dueDate ?? null,
+        notes: input.notes ?? null,
+        testId: input.testId ?? null,
+      }))
+    }
+  }
+
+  return created
 }
 
 /** My Day inline row: type, Enter, done. */
