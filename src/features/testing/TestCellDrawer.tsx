@@ -44,13 +44,13 @@ export function TestCellDrawer({ cell, onClose }: {
   const setStatus = useMutation({
     mutationFn: (next: TestStatus) =>
       startProductTest({ productId: cell!.productId, marketId: cell!.marketId, status: next }),
-    onSuccess: () => { refresh(); toast.success('Status updated') },
+    onSuccess: () => { refresh(); toast.success('Статусот е ажуриран') },
     onError: (e: Error) => toast.error(e.message),
   })
 
   const saveDetails = useMutation({
     mutationFn: () => updateTest(test!.id, { offer, notes }),
-    onSuccess: () => { refresh(); toast.success('Saved') },
+    onSuccess: () => { refresh(); toast.success('Зачувано') },
   })
 
   if (!cell) return null
@@ -59,20 +59,20 @@ export function TestCellDrawer({ cell, onClose }: {
     <Drawer
       open
       onClose={onClose}
-      title={product?.name ?? 'Product'}
+      title={product?.name ?? 'Производ'}
       subtitle={market?.name}
       footer={
         <div className="flex gap-2">
           <button className="btn-primary" onClick={() => actions.open('start-test', { productId: cell.productId, marketId: cell.marketId })}>
-            Prepare test
+            Подготви тест
           </button>
-          {test && <button className="btn-quiet" onClick={() => saveDetails.mutate()}>Save details</button>}
+          {test && <button className="btn-quiet" onClick={() => saveDetails.mutate()}>Зачувај детали</button>}
         </div>
       }
     >
       <div className="space-y-6">
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-soft mb-2">Status</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-soft mb-2">Статус</h3>
           <div className="flex flex-wrap gap-2">
             {TEST_STATUS_ORDER.map((s) => (
               <button
@@ -92,11 +92,11 @@ export function TestCellDrawer({ cell, onClose }: {
           <>
             <dl className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <dt className="text-[11px] uppercase tracking-wide text-ink-soft">Owner</dt>
+                <dt className="text-[11px] uppercase tracking-wide text-ink-soft">Одговорен</dt>
                 <dd className="mt-0.5">{people.find((p) => p.id === test.owner_id)?.full_name ?? '—'}</dd>
               </div>
               <div>
-                <dt className="text-[11px] uppercase tracking-wide text-ink-soft">Started</dt>
+                <dt className="text-[11px] uppercase tracking-wide text-ink-soft">Започнат</dt>
                 <dd className="mt-0.5">{test.start_date ?? '—'}</dd>
               </div>
             </dl>
@@ -104,22 +104,22 @@ export function TestCellDrawer({ cell, onClose }: {
             <div className="space-y-2">
               {test.landing_url && (
                 <a className="flex items-center gap-2 text-sm text-teal-700 hover:underline" href={test.landing_url} target="_blank" rel="noopener noreferrer">
-                  Landing <ExternalLink size={13} />
+                  Лендинг <ExternalLink size={13} />
                 </a>
               )}
               {test.campaign_url && (
                 <a className="flex items-center gap-2 text-sm text-teal-700 hover:underline" href={test.campaign_url} target="_blank" rel="noopener noreferrer">
-                  Campaign <ExternalLink size={13} />
+                  Кампања <ExternalLink size={13} />
                 </a>
               )}
             </div>
 
             <label className="block">
-              <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">Offer</span>
-              <input className="field" value={offer} onChange={(e) => setOffer(e.target.value)} placeholder="e.g. 2+1 free" />
+              <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">Понуда</span>
+              <input className="field" value={offer} onChange={(e) => setOffer(e.target.value)} placeholder="пр. 2+1 гратис" />
             </label>
             <label className="block">
-              <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">Notes</span>
+              <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">Белешки</span>
               <textarea className="field h-auto py-2 resize-none" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </label>
           </>

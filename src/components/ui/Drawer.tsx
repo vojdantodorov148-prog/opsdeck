@@ -24,7 +24,7 @@ export function Drawer({
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-ink/15 backdrop-blur-[1px] animate-fade-in" onClick={onClose} />
       <aside
-        role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : 'Details'}
+        role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : 'Детали'}
         className={cn('relative h-full w-full bg-surface border-l border-line shadow-float flex flex-col animate-slide-in', width)}
       >
         <header className="flex items-start gap-3 px-6 py-5 border-b border-line">
@@ -32,7 +32,7 @@ export function Drawer({
             <h2 className="text-base font-semibold tracking-tight truncate">{title}</h2>
             {subtitle && <p className="mt-0.5 text-sm text-ink-soft truncate">{subtitle}</p>}
           </div>
-          <button className="btn-ghost h-8 w-8 px-0" onClick={onClose} aria-label="Close">
+          <button className="btn-ghost h-8 w-8 px-0" onClick={onClose} aria-label="Затвори">
             <X size={16} />
           </button>
         </header>

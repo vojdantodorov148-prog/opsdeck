@@ -20,25 +20,25 @@ export function Products() {
   return (
     <div className="max-w-[1100px]">
       <PageHeader
-        title="Products"
-        subtitle="The source of truth for pricing, margins and where each product is being sold."
-        action={can('products.manage') ? <button className="btn-primary" onClick={() => setAdding(true)}>Add product</button> : undefined}
+        title="Производи"
+        subtitle="Главна база за цени, break-even, трошоци и пазари за секој производ."
+        action={can('products.manage') ? <button className="btn-primary" onClick={() => setAdding(true)}>Додај производ</button> : undefined}
       />
 
       {error ? <ErrorNote error={error} /> : isLoading ? <Loading rows={5} /> : products.length === 0 ? (
-        <div className="panel"><EmptyState title="No products yet" hint="Add the first one to start tracking markets." /></div>
+        <div className="panel"><EmptyState title="Сѐ уште нема производи" hint="Додај го првиот производ за да започнеш со следење по пазари." /></div>
       ) : (
         <div className="panel overflow-x-auto scrollbar-thin">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-ink-soft">
-                <th className="px-4 py-3 font-semibold">Product</th>
-                <th className="px-4 py-3 font-semibold">Brand</th>
-                <th className="px-4 py-3 font-semibold text-right">Price</th>
+                <th className="px-4 py-3 font-semibold">Производ</th>
+                <th className="px-4 py-3 font-semibold">Бренд</th>
+                <th className="px-4 py-3 font-semibold text-right">Цена</th>
                 <th className="px-4 py-3 font-semibold text-right">Break-even CPA</th>
                 <th className="px-4 py-3 font-semibold text-right">COGS</th>
-                <th className="px-4 py-3 font-semibold">Markets</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold">Пазари</th>
+                <th className="px-4 py-3 font-semibold">Статус</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -65,7 +65,7 @@ export function Products() {
                             </span>
                           )
                         })}
-                        {mine.length === 0 && <span className="text-ink-soft text-xs">Not tested</span>}
+                        {mine.length === 0 && <span className="text-ink-soft text-xs">Не е тестиран</span>}
                       </div>
                     </td>
                     <td className="px-4 py-3"><Badge className="bg-panel border-line text-ink-soft">{PRODUCT_STATUS[p.status]}</Badge></td>
@@ -98,28 +98,28 @@ function AddProductModal({ open, onClose }: { open: boolean; onClose: () => void
         status: form.status,
         main_url: form.main_url || null,
       }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['products'] }); toast.success('Product added'); onClose() },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['products'] }); toast.success('Производот е додаден'); onClose() },
     onError: (e: Error) => toast.error(e.message),
   })
 
   return (
-    <Modal open={open} onClose={onClose} title="Add product"
+    <Modal open={open} onClose={onClose} title="Додај производ"
       footer={<div className="flex justify-end gap-2">
-        <button className="btn-quiet" onClick={onClose}>Cancel</button>
-        <button className="btn-primary" disabled={!form.name || save.isPending} onClick={() => save.mutate()}>Add product</button>
+        <button className="btn-quiet" onClick={onClose}>Откажи</button>
+        <button className="btn-primary" disabled={!form.name || save.isPending} onClick={() => save.mutate()}>Додај производ</button>
       </div>}>
       <div className="space-y-3">
-        <input className="field" placeholder="Product name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <input className="field" placeholder="Име на производ" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <select className="field" value={form.brand_id} onChange={(e) => setForm({ ...form, brand_id: e.target.value })}>
-          <option value="">No brand</option>
+          <option value="">Без бренд</option>
           {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
         <div className="grid grid-cols-3 gap-3">
-          <input className="field" placeholder="Price" inputMode="decimal" value={form.selling_price} onChange={(e) => setForm({ ...form, selling_price: e.target.value })} />
+          <input className="field" placeholder="Цена" inputMode="decimal" value={form.selling_price} onChange={(e) => setForm({ ...form, selling_price: e.target.value })} />
           <input className="field" placeholder="Break-even CPA" inputMode="decimal" value={form.break_even_cpa} onChange={(e) => setForm({ ...form, break_even_cpa: e.target.value })} />
           <input className="field" placeholder="COGS" inputMode="decimal" value={form.cogs} onChange={(e) => setForm({ ...form, cogs: e.target.value })} />
         </div>
-        <input className="field" placeholder="Main product page URL" value={form.main_url} onChange={(e) => setForm({ ...form, main_url: e.target.value })} />
+        <input className="field" placeholder="Главен линк на производот" value={form.main_url} onChange={(e) => setForm({ ...form, main_url: e.target.value })} />
         <select className="field" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as ProductStatus })}>
           {Object.entries(PRODUCT_STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>

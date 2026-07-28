@@ -17,10 +17,8 @@ export function LevelWidget() {
 
   return (
     <div className="mt-4 rounded-2xl border border-line bg-white px-4 py-4">
-      <p className="text-[15px] font-semibold">Level {data.level}</p>
-      <p className="mt-0.5 text-xs text-ink-soft">
-        {within.toLocaleString()} / {span.toLocaleString()} XP
-      </p>
+      <p className="text-[15px] font-semibold">Ниво {data.level}</p>
+      <p className="mt-0.5 text-xs text-ink-soft">{within.toLocaleString('mk-MK')} / {span.toLocaleString('mk-MK')} XP</p>
       <Progress value={(within / span) * 100} className="mt-3" />
     </div>
   )

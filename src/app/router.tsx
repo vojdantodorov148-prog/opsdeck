@@ -11,34 +11,29 @@ import { ProductTesting } from '@/features/testing/ProductTesting'
 import { Tools } from '@/features/tools/Tools'
 import { Notes } from '@/features/notes/Notes'
 import { Team } from '@/features/team/Team'
-import { VisionCenter } from '@/features/vision/VisionCenter'
 import { Settings } from '@/features/settings/Settings'
-import { RequirePermission } from './guards'
+import { RequirePage, RequirePermission } from './guards'
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <AppShell />,
     children: [
-      { index: true, element: <Home /> },
-      { path: 'my-day', element: <MyDay /> },
-      { path: 'tasks', element: <Tasks /> },
-      { path: 'products', element: <Products /> },
-      { path: 'products/:id', element: <ProductDetail /> },
-      { path: 'landings', element: <Factory department="landing" /> },
-      { path: 'creatives', element: <Factory department="creative" /> },
-      { path: 'testing', element: <TestingHub /> },
-      { path: 'testing/products', element: <ProductTesting /> },
-      { path: 'tools', element: <Tools /> },
-      { path: 'notes', element: <Notes /> },
-      { path: 'team', element: <Team /> },
-      {
-        path: 'vision',
-        element: <RequirePermission permission="vision_center.read"><VisionCenter /></RequirePermission>,
-      },
+      { index: true, element: <RequirePage page="home"><Home /></RequirePage> },
+      { path: 'my-day', element: <RequirePage page="my_day"><MyDay /></RequirePage> },
+      { path: 'tasks', element: <RequirePage page="tasks"><Tasks /></RequirePage> },
+      { path: 'products', element: <RequirePage page="products"><Products /></RequirePage> },
+      { path: 'products/:id', element: <RequirePage page="products"><ProductDetail /></RequirePage> },
+      { path: 'landings', element: <RequirePage page="landings"><Factory department="landing" /></RequirePage> },
+      { path: 'creatives', element: <RequirePage page="creatives"><Factory department="creative" /></RequirePage> },
+      { path: 'testing', element: <RequirePage page="testing"><TestingHub /></RequirePage> },
+      { path: 'testing/products', element: <RequirePage page="testing"><ProductTesting /></RequirePage> },
+      { path: 'tools', element: <RequirePage page="tools"><Tools /></RequirePage> },
+      { path: 'notes', element: <RequirePage page="notes"><Notes /></RequirePage> },
+      { path: 'team', element: <RequirePage page="team"><Team /></RequirePage> },
       {
         path: 'settings',
-        element: <RequirePermission permission="settings.manage"><Settings /></RequirePermission>,
+        element: <RequirePage page="settings"><RequirePermission permission="settings.manage"><Settings /></RequirePermission></RequirePage>,
       },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

@@ -47,7 +47,7 @@ export function StartTestModal() {
       qc.invalidateQueries({ queryKey: ['tests'] })
       qc.invalidateQueries({ queryKey: ['tasks'] })
       qc.invalidateQueries({ queryKey: ['my-week'] })
-      toast.success('Test updated and preparation assigned')
+      toast.success('Тестот е ажуриран и подготовката е доделена')
       close()
     },
     onError: (e: Error) => toast.error(e.message),
@@ -57,14 +57,14 @@ export function StartTestModal() {
     <Modal
       open={open}
       onClose={close}
-      title="Start a product test"
-      description="One product in one market. Creative concepts stay in the Creative Testing Calendar."
+      title="Започни продукт тест"
+      description="Еден производ во еден пазар. Креативните концепти остануваат во Creative Testing Calendar."
       width="max-w-xl"
       footer={
         <div className="flex justify-end gap-2">
-          <button className="btn-quiet" onClick={close}>Cancel</button>
+          <button className="btn-quiet" onClick={close}>Откажи</button>
           <button className="btn-primary" disabled={!productId || !marketId || save.isPending} onClick={() => save.mutate()}>
-            {save.isPending ? 'Saving…' : 'Save test'}
+            {save.isPending ? 'Се зачувува…' : 'Зачувај тест'}
           </button>
         </div>
       }
@@ -72,23 +72,23 @@ export function StartTestModal() {
       <div className="space-y-5">
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">Product</span>
+            <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">Производ</span>
             <select className="field" value={productId} onChange={(e) => setProductId(e.target.value)}>
-              <option value="">Choose a product</option>
+              <option value="">Избери производ</option>
               {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">Market</span>
+            <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">Пазар</span>
             <select className="field" value={marketId} onChange={(e) => setMarketId(e.target.value)}>
-              <option value="">Choose a market</option>
+              <option value="">Избери пазар</option>
               {markets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </label>
         </div>
 
         <div>
-          <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">Status</span>
+          <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">Статус</span>
           <div className="flex flex-wrap gap-2">
             {CHOOSABLE.map((s) => (
               <button
@@ -107,30 +107,30 @@ export function StartTestModal() {
 
         <label className="block">
           <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">
-            Offer <span className="font-normal normal-case tracking-normal opacity-70">optional</span>
+            Понуда <span className="font-normal normal-case tracking-normal opacity-70">опционално</span>
           </span>
-          <input className="field" placeholder="e.g. 2+1 free, 39.90" value={offer} onChange={(e) => setOffer(e.target.value)} />
+          <input className="field" placeholder="пр. 2+1 гратис, 39.90" value={offer} onChange={(e) => setOffer(e.target.value)} />
         </label>
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">What needs preparing</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Што треба да се подготви</span>
             <button className="btn-ghost h-8 -mr-2" onClick={() => setPrep((p) => [...p, { type: 'advertorial', quantity: 1, assigned_to: '' }])}>
-              <Plus size={15} /> Add
+              <Plus size={15} /> Додај
             </button>
           </div>
           {prep.length === 0 && (
-            <p className="text-sm text-ink-soft">Nothing yet. Add rows to create the prep work along with the test.</p>
+            <p className="text-sm text-ink-soft">Сѐ уште нема. Додај редови за подготовката што оди со тестот.</p>
           )}
           <div className="space-y-2">
             {prep.map((row, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input
-                  type="number" min={1} value={row.quantity} aria-label="Quantity" className="field w-16 text-center"
+                  type="number" min={1} value={row.quantity} aria-label="Количина" className="field w-16 text-center"
                   onChange={(e) => setPrep((p) => p.map((r, idx) => (idx === i ? { ...r, quantity: Number(e.target.value) || 1 } : r)))}
                 />
                 <select
-                  className="field flex-1" value={row.type} aria-label="Deliverable type"
+                  className="field flex-1" value={row.type} aria-label="Тип на испорака"
                   onChange={(e) => setPrep((p) => p.map((r, idx) => (idx === i ? { ...r, type: e.target.value as DeliverableType } : r)))}
                 >
                   {DELIVERABLE_GROUPS.map((g) => (
@@ -140,13 +140,13 @@ export function StartTestModal() {
                   ))}
                 </select>
                 <select
-                  className="field w-40" value={row.assigned_to} aria-label="Assignee"
+                  className="field w-40" value={row.assigned_to} aria-label="Извршител"
                   onChange={(e) => setPrep((p) => p.map((r, idx) => (idx === i ? { ...r, assigned_to: e.target.value } : r)))}
                 >
-                  <option value="">Assign to…</option>
+                  <option value="">Додели на…</option>
                   {people.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
                 </select>
-                <button className="btn-ghost h-10 w-10 px-0" aria-label="Remove row" onClick={() => setPrep((p) => p.filter((_, idx) => idx !== i))}>
+                <button className="btn-ghost h-10 w-10 px-0" aria-label="Избриши ред" onClick={() => setPrep((p) => p.filter((_, idx) => idx !== i))}>
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -154,7 +154,7 @@ export function StartTestModal() {
           </div>
           {prep.some((p) => p.assigned_to) && (
             <div className="mt-3 flex items-center gap-2 text-xs text-ink-soft">
-              <span>Creates one task per person:</span>
+              <span>Креира по една задача за секој член:</span>
               {[...new Set(prep.filter((p) => p.assigned_to).map((p) => p.assigned_to))].map((id) => {
                 const person = people.find((p) => p.id === id)
                 return <Avatar key={id} name={person?.full_name} url={person?.avatar_url} size={22} />

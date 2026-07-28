@@ -9,12 +9,12 @@ import { useActions } from '@/app/actions'
 import { cn } from '@/lib/cn'
 import type { TestStatus } from '@/types/db'
 
-const VIEWS = ['Matrix', 'Pipeline', 'History'] as const
+const VIEWS = ['Матрица', 'Тековни', 'Историја'] as const
 const PIPELINE: TestStatus[] = ['preparing', 'ready', 'testing']
 
 export function ProductTesting() {
   const actions = useActions()
-  const [view, setView] = useState<(typeof VIEWS)[number]>('Matrix')
+  const [view, setView] = useState<(typeof VIEWS)[number]>('Матрица')
   const [cell, setCell] = useState<{ productId: string; marketId: string } | null>(null)
 
   const { data: products = [], isLoading, error } = useQuery({ queryKey: ['products'], queryFn: listProducts })
@@ -27,9 +27,9 @@ export function ProductTesting() {
   return (
     <div className="max-w-[1100px]">
       <PageHeader
-        title="Product Testing"
-        subtitle="Every product against every market. Creative concepts are tracked in the Creative Testing Calendar."
-        action={<button className="btn-primary" onClick={() => actions.open('start-test')}>Start test</button>}
+        title="Продукт тестирање"
+        subtitle="Секој производ во секој пазар. Креативните концепти се следат во Creative Testing Calendar."
+        action={<button className="btn-primary" onClick={() => actions.open('start-test')}>Започни тест</button>}
       />
 
       <div className="flex gap-1 mb-4">
@@ -45,12 +45,12 @@ export function ProductTesting() {
 
       {error ? <ErrorNote error={error} /> : isLoading ? <Loading rows={6} /> : (
         <>
-          {view === 'Matrix' && (
+          {view === 'Матрица' && (
             <div className="panel overflow-x-auto scrollbar-thin">
               <table className="w-full text-sm border-separate border-spacing-0">
                 <thead>
                   <tr>
-                    <th className="sticky left-0 bg-surface z-10 text-left px-4 py-3 text-[11px] uppercase tracking-wide text-ink-soft font-semibold">Product</th>
+                    <th className="sticky left-0 bg-surface z-10 text-left px-4 py-3 text-[11px] uppercase tracking-wide text-ink-soft font-semibold">Производ</th>
                     {markets.map((m) => (
                       <th key={m.id} className="px-2 py-3 text-[11px] uppercase tracking-wide text-ink-soft font-semibold text-center min-w-[92px]" title={m.name}>
                         {m.code}
@@ -70,7 +70,7 @@ export function ProductTesting() {
                             <button
                               onClick={() => setCell({ productId: p.id, marketId: m.id })}
                               className={cn('w-full h-9 rounded-lg border border-transparent flex items-center justify-center gap-1.5 text-[11px] font-medium transition hover:border-teal-200', meta.cell, meta.text)}
-                              aria-label={`${p.name} in ${m.name}: ${meta.label}`}
+                              aria-label={`${p.name} во ${m.name}: ${meta.label}`}
                             >
                               <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: meta.dot }} />
                               {s === 'not_tested' ? '—' : meta.label}
@@ -85,7 +85,7 @@ export function ProductTesting() {
             </div>
           )}
 
-          {view === 'Pipeline' && (
+          {view === 'Тековни' && (
             <div className="grid gap-4 md:grid-cols-3">
               {PIPELINE.map((s) => {
                 const list = tests.filter((t) => t.status === s)
@@ -106,7 +106,7 @@ export function ProductTesting() {
                           </button>
                         </li>
                       ))}
-                      {list.length === 0 && <li className="text-sm text-ink-soft px-2 py-2">Empty</li>}
+                      {list.length === 0 && <li className="text-sm text-ink-soft px-2 py-2">Празно</li>}
                     </ul>
                   </section>
                 )
@@ -114,10 +114,10 @@ export function ProductTesting() {
             </div>
           )}
 
-          {view === 'History' && (
+          {view === 'Историја' && (
             <div className="panel p-2">
               {tests.filter((t) => t.status === 'winner' || t.status === 'stopped').length === 0 ? (
-                <EmptyState title="No finished tests yet" hint="Winners and stopped tests collect here." />
+                <EmptyState title="Сѐ уште нема завршени тестови" hint="Победничките и стопираните тестови ќе се појават тука." />
               ) : (
                 <ul className="divide-y divide-line">
                   {tests.filter((t) => t.status === 'winner' || t.status === 'stopped').map((t) => (

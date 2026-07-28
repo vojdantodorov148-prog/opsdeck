@@ -33,6 +33,11 @@ export async function saveTool(tool: Partial<Tool>) {
   if (error) throw error
 }
 
+export async function deleteTool(id: string) {
+  const { error } = await supabase.from('tools').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function getSetting<T>(key: string): Promise<T | null> {
   const { data, error } = await supabase.from('app_settings').select('value').eq('key', key).maybeSingle()
   if (error) throw error

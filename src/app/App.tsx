@@ -14,7 +14,7 @@ const queryClient = new QueryClient({
 
 function Gate() {
   const { session, loading } = useSession()
-  if (loading) return <div className="min-h-screen grid place-items-center text-sm text-ink-soft">Loading…</div>
+  if (loading) return <div className="min-h-screen grid place-items-center text-sm text-ink-soft">Се вчитува…</div>
   if (!session) return <SignIn />
   return <RouterProvider router={router} />
 }
@@ -24,11 +24,11 @@ function SetupNeeded() {
     <div className="min-h-screen grid place-items-center bg-canvas p-6">
       <div className="panel p-8 max-w-md">
         <Logo />
-        <h1 className="mt-6 text-lg font-semibold">Connect Supabase to continue</h1>
+        <h1 className="mt-6 text-lg font-semibold">Поврзете го Supabase за да продолжите</h1>
         <p className="mt-2 text-sm text-ink-soft">
-          Copy <code className="px-1 rounded bg-panel">.env.example</code> to <code className="px-1 rounded bg-panel">.env</code>,
-          fill in <code className="px-1 rounded bg-panel">VITE_SUPABASE_URL</code> and{' '}
-          <code className="px-1 rounded bg-panel">VITE_SUPABASE_ANON_KEY</code>, then restart the dev server.
+          Копирајте го <code className="px-1 rounded bg-panel">.env.example</code> како <code className="px-1 rounded bg-panel">.env</code>,
+          внесете ги <code className="px-1 rounded bg-panel">VITE_SUPABASE_URL</code> и{' '}
+          <code className="px-1 rounded bg-panel">VITE_SUPABASE_ANON_KEY</code>, па рестартирајте ја апликацијата.
         </p>
       </div>
     </div>

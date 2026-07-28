@@ -36,7 +36,7 @@ export function NotificationBell() {
       <button
         className="relative h-10 w-10 grid place-items-center rounded-xl hover:bg-teal-50 transition"
         onClick={() => setOpen((v) => !v)}
-        aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}
+        aria-label={`Известувања${unread ? `, ${unread} непрочитани` : ''}`}
       >
         <Bell size={20} strokeWidth={1.8} className="text-ink-soft" />
         {unread > 0 && (
@@ -51,7 +51,7 @@ export function NotificationBell() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 mt-2 w-80 z-50 panel shadow-float p-2 animate-fade-in">
             <div className="flex items-center justify-between px-2 py-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Notifications</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Известувања</span>
               {unread > 0 && (
                 <button
                   className="text-xs text-teal-600 hover:underline"
@@ -60,12 +60,12 @@ export function NotificationBell() {
                     qc.invalidateQueries({ queryKey: ['notifications', userId] })
                   }}
                 >
-                  Mark all read
+                  Означи ги сите како прочитани
                 </button>
               )}
             </div>
             <div className="max-h-80 overflow-y-auto scrollbar-thin">
-              {data.length === 0 && <p className="px-3 py-6 text-sm text-ink-soft text-center">Nothing needs you right now.</p>}
+              {data.length === 0 && <p className="px-3 py-6 text-sm text-ink-soft text-center">Во моментов ништо не бара твое внимание.</p>}
               {data.map((n) => (
                 <button
                   key={n.id}

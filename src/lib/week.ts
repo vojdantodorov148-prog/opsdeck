@@ -1,15 +1,16 @@
 import { addDays, format, isSameDay, startOfWeek } from 'date-fns'
 
 export const ISO = 'yyyy-MM-dd'
+export const WEEKDAY_MK = ['Понеделник', 'Вторник', 'Среда', 'Четврток', 'Петок', 'Сабота', 'Недела']
+export const MONTH_MK = ['јан', 'фев', 'мар', 'апр', 'мај', 'јун', 'јул', 'авг', 'сеп', 'окт', 'ное', 'дек']
 
 export function weekStart(date: Date) {
   return startOfWeek(date, { weekStartsOn: 1 })
 }
 
-/** Monday–Friday by default; the weekend appears only when work is parked there. */
 export function weekDays(anchor: Date, includeWeekend = false) {
   const start = weekStart(anchor)
-  return Array.from({ length: includeWeekend ? 7 : 5 }, (_, i) => addDays(start, i))
+  return Array.from({ length: includeWeekend ? 7 : 5 }, (_, index) => addDays(start, index))
 }
 
 export function iso(date: Date) {
@@ -20,20 +21,25 @@ export function isToday(date: Date) {
   return isSameDay(date, new Date())
 }
 
-export function weekLabel(anchor: Date) {
-  const days = weekDays(anchor, true)
-  const a = days[0]
-  const b = days[6]
-  const same = a.getMonth() === b.getMonth()
-  return same
-    ? `${format(a, 'd')}–${format(b, 'd MMM yyyy')}`
-    : `${format(a, 'd MMM')} – ${format(b, 'd MMM yyyy')}`
+export function weekdayMk(date: Date) {
+  const mondayIndex = (date.getDay() + 6) % 7
+  return WEEKDAY_MK[mondayIndex]
 }
 
-/**
- * Scheduled date wins over due date. Work with neither stays unscheduled
- * rather than being force-fed into a day the person never chose.
- */
+export function dateMk(date: Date) {
+  return `${date.getDate()} ${MONTH_MK[date.getMonth()]}`
+}
+
+export function weekLabel(anchor: Date) {
+  const days = weekDays(anchor, true)
+  const first = days[0]
+  const last = days[6]
+  const sameMonth = first.getMonth() === last.getMonth()
+  return sameMonth
+    ? `${first.getDate()}–${last.getDate()} ${MONTH_MK[last.getMonth()]} ${last.getFullYear()}`
+    : `${first.getDate()} ${MONTH_MK[first.getMonth()]} – ${last.getDate()} ${MONTH_MK[last.getMonth()]} ${last.getFullYear()}`
+}
+
 export function laneFor(task: { scheduled_date: string | null }) {
   return task.scheduled_date ?? null
 }

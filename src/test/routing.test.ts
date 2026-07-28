@@ -30,9 +30,9 @@ describe('automatic routing', () => {
 
 describe('deliverable summaries', () => {
   it('reads the way a person would say it', () => {
-    expect(describeDeliverables([{ type: 'advertorial', quantity: 2 }])).toBe('2 Advertorials')
+    expect(describeDeliverables([{ type: 'advertorial', quantity: 2 }])).toBe('2 × Адверторијал')
     expect(describeDeliverables([{ type: 'product_page', quantity: 1 }, { type: 'advertorial', quantity: 2 }]))
-      .toBe('1 Product Page · 2 Advertorials')
+      .toBe('1 × Продукт страница · 2 × Адверторијал')
   })
 })
 

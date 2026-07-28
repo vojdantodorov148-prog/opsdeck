@@ -37,38 +37,38 @@ export function Tasks() {
   return (
     <div className="max-w-[1000px]">
       <PageHeader
-        title="Tasks"
-        subtitle="Everything the company is working on."
-        action={<button className="btn-primary" onClick={() => actions.open('give-task')}>Give task</button>}
+        title="Задачи"
+        subtitle="Сета активна работа во компанијата."
+        action={<button className="btn-primary" onClick={() => actions.open('give-task')}>Додели задача</button>}
       />
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="flex rounded-xl border border-line overflow-hidden">
-          <button className={`h-9 px-3 text-sm ${!mine ? 'bg-teal-50 text-teal-700' : 'text-ink-soft'}`} onClick={() => setMine(false)}>All tasks</button>
-          <button className={`h-9 px-3 text-sm ${mine ? 'bg-teal-50 text-teal-700' : 'text-ink-soft'}`} onClick={() => setMine(true)}>My tasks</button>
+          <button className={`h-9 px-3 text-sm ${!mine ? 'bg-teal-50 text-teal-700' : 'text-ink-soft'}`} onClick={() => setMine(false)}>Сите задачи</button>
+          <button className={`h-9 px-3 text-sm ${mine ? 'bg-teal-50 text-teal-700' : 'text-ink-soft'}`} onClick={() => setMine(true)}>Мои задачи</button>
         </div>
         <select className="field w-auto h-9" value={filters.assignee ?? ''} onChange={(e) => setFilters((f) => ({ ...f, assignee: e.target.value || undefined }))}>
-          <option value="">Anyone</option>
+          <option value="">Сите членови</option>
           {people.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
         </select>
         <select className="field w-auto h-9" value={filters.product ?? ''} onChange={(e) => setFilters((f) => ({ ...f, product: e.target.value || undefined }))}>
-          <option value="">Any product</option>
+          <option value="">Сите производи</option>
           {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <select className="field w-auto h-9" value={filters.market ?? ''} onChange={(e) => setFilters((f) => ({ ...f, market: e.target.value || undefined }))}>
-          <option value="">Any market</option>
+          <option value="">Сите пазари</option>
           {markets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
         <select className="field w-auto h-9" value={filters.status ?? ''} onChange={(e) => setFilters((f) => ({ ...f, status: (e.target.value || undefined) as TaskStatus | undefined }))}>
-          <option value="">Any status</option>
-          <option value="todo">To do</option>
-          <option value="doing">Doing</option>
-          <option value="review">Review</option>
-          <option value="blocked">Blocked</option>
-          <option value="done">Done</option>
+          <option value="">Сите статуси</option>
+          <option value="todo">За работа</option>
+          <option value="doing">Во тек</option>
+          <option value="review">За преглед</option>
+          <option value="blocked">Блокирано</option>
+          <option value="done">Завршено</option>
         </select>
         <input
-          className="field w-auto h-9 flex-1 min-w-[160px]" placeholder="Search titles"
+          className="field w-auto h-9 flex-1 min-w-[160px]" placeholder="Пребарај задачи"
           onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value || undefined }))}
         />
       </div>
@@ -76,7 +76,7 @@ export function Tasks() {
       <div className="panel p-2">
         {error ? <ErrorNote error={error} />
           : isLoading ? <div className="p-3"><Loading rows={6} /></div>
-          : tasks.length === 0 ? <EmptyState title="No tasks match" hint="Loosen a filter, or give someone a task." />
+          : tasks.length === 0 ? <EmptyState title="Нема задачи што одговараат" hint="Промени ги филтрите или додели нова задача." />
           : <TaskList tasks={tasks} onOpen={setOpenTask} />}
       </div>
 

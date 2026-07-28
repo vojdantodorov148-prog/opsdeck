@@ -47,18 +47,18 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
   })
   const reviewMut = useMutation({
     mutationFn: (approve: boolean) => resolveReview(taskId as string, approve),
-    onSuccess: () => { refresh(); toast.success('Review recorded') },
+    onSuccess: () => { refresh(); toast.success('Прегледот е зачуван') },
   })
   const submitMut = useMutation({
     mutationFn: () => submitForReview(taskId as string, task?.created_by ?? userId),
-    onSuccess: () => { refresh(); toast.success('Sent for review') },
+    onSuccess: () => { refresh(); toast.success('Испратено за преглед') },
   })
   const commentMut = useMutation({
     mutationFn: () => addComment(taskId as string, userId, comment),
     onSuccess: () => { setComment(''); qc.invalidateQueries({ queryKey: ['comments', taskId] }) },
   })
 
-  if (!taskId || !task) return <Drawer open={Boolean(taskId)} onClose={onClose} title="Loading…"><div /></Drawer>
+  if (!taskId || !task) return <Drawer open={Boolean(taskId)} onClose={onClose} title="Се вчитува…"><div /></Drawer>
 
   const isPersonal = task.source === 'personal'
   const { total, done, pct } = progressOf(task.deliverables ?? [])
@@ -71,7 +71,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
       title={task.title}
       subtitle={
         isPersonal
-          ? 'Personal'
+          ? 'Лично'
           : [task.deliverables?.map((d) => `${d.quantity} ${DELIVERABLE_LABELS[d.type]}`).join(' · '), DEPARTMENT[task.department].label]
               .filter(Boolean).join('  —  ')
       }
@@ -79,18 +79,18 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
         <div className="flex flex-wrap items-center gap-2">
           {task.status === 'review' && isReviewer ? (
             <>
-              <button className="btn-primary" onClick={() => reviewMut.mutate(true)}>Approve</button>
-              <button className="btn-quiet" onClick={() => reviewMut.mutate(false)}>Request changes</button>
+              <button className="btn-primary" onClick={() => reviewMut.mutate(true)}>Одобри</button>
+              <button className="btn-quiet" onClick={() => reviewMut.mutate(false)}>Побарај измени</button>
             </>
           ) : task.status === 'done' ? (
-            <button className="btn-quiet" onClick={() => statusMut.mutate('doing')}>Reopen</button>
+            <button className="btn-quiet" onClick={() => statusMut.mutate('doing')}>Отвори повторно</button>
           ) : isPersonal ? (
-            <button className="btn-primary" onClick={() => statusMut.mutate('done')}>Complete</button>
+            <button className="btn-primary" onClick={() => statusMut.mutate('done')}>Заврши</button>
           ) : (
             <>
-              <button className="btn-primary" onClick={() => submitMut.mutate()}>Submit for review</button>
+              <button className="btn-primary" onClick={() => submitMut.mutate()}>Испрати за преглед</button>
               <button className="btn-quiet" onClick={() => statusMut.mutate(task.status === 'blocked' ? 'doing' : 'blocked')}>
-                {task.status === 'blocked' ? 'Unblock' : 'Blocked'}
+                {task.status === 'blocked' ? 'Одблокирај' : 'Блокирај'}
               </button>
             </>
           )}
@@ -106,7 +106,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
               {task.assignee.full_name}
             </span>
           )}
-          {task.due_date && <span className="text-sm text-ink-soft">Due {task.due_date}</span>}
+          {task.due_date && <span className="text-sm text-ink-soft">Рок {task.due_date}</span>}
         </div>
 
         {task.description && <p className="text-sm text-ink-soft whitespace-pre-wrap">{task.description}</p>}
@@ -114,7 +114,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
         {total > 0 && (
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Deliverables</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Испораки</h3>
               <span className="text-xs text-ink-soft">{done} / {total}</span>
             </div>
             <Progress value={pct} className="mb-3" />
@@ -124,12 +124,12 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
                   <span className="flex-1 text-sm">{DELIVERABLE_LABELS[d.type]}</span>
                   <div className="flex items-center gap-1">
                     <button
-                      className="btn-ghost h-8 w-8 px-0" aria-label="Mark one less complete"
+                      className="btn-ghost h-8 w-8 px-0" aria-label="Намали завршена количина"
                       onClick={() => progressMut.mutate({ id: d.id, value: Math.max(0, d.completed_quantity - 1) })}
                     ><Minus size={14} /></button>
                     <span className="w-12 text-center text-sm tabular-nums">{d.completed_quantity}/{d.quantity}</span>
                     <button
-                      className="btn-ghost h-8 w-8 px-0" aria-label="Mark one more complete"
+                      className="btn-ghost h-8 w-8 px-0" aria-label="Зголеми завршена количина"
                       onClick={() => progressMut.mutate({ id: d.id, value: Math.min(d.quantity, d.completed_quantity + 1) })}
                     ><Plus size={14} /></button>
                   </div>
@@ -141,26 +141,26 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
         )}
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-soft mb-2">Comments</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-soft mb-2">Коментари</h3>
           <ul className="space-y-3">
             {comments.map((c: { id: string; content: string; author?: { full_name: string; avatar_url: string | null } | null }) => (
               <li key={c.id} className="flex gap-2.5">
                 <Avatar name={c.author?.full_name} url={c.author?.avatar_url} size={26} />
                 <div className="min-w-0">
-                  <p className="text-xs font-medium">{c.author?.full_name ?? 'Someone'}</p>
+                  <p className="text-xs font-medium">{c.author?.full_name ?? 'Некој'}</p>
                   <p className="text-sm text-ink-soft whitespace-pre-wrap">{c.content}</p>
                 </div>
               </li>
             ))}
-            {comments.length === 0 && <li className="text-sm text-ink-soft">No comments yet.</li>}
+            {comments.length === 0 && <li className="text-sm text-ink-soft">Сѐ уште нема коментари.</li>}
           </ul>
           <div className="mt-3 flex gap-2">
             <input
-              className="field flex-1" placeholder="Write a comment" value={comment}
+              className="field flex-1" placeholder="Напиши коментар" value={comment}
               onChange={(e) => setComment(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && comment.trim() && commentMut.mutate()}
             />
-            <button className="btn-quiet" disabled={!comment.trim()} onClick={() => commentMut.mutate()}>Send</button>
+            <button className="btn-quiet" disabled={!comment.trim()} onClick={() => commentMut.mutate()}>Испрати</button>
           </div>
         </div>
       </div>

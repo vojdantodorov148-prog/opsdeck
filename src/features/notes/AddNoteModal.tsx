@@ -37,7 +37,7 @@ export function AddNoteModal() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['notes'] })
-      toast.success('Note saved')
+      toast.success('Белешката е зачувана')
       close()
     },
     onError: (e: Error) => toast.error(e.message),
@@ -47,29 +47,29 @@ export function AddNoteModal() {
     <Modal
       open={open}
       onClose={close}
-      title="Add a note"
+      title="Додај белешка"
       footer={
         <div className="flex items-center justify-between">
           <label className="flex items-center gap-2 text-sm text-ink-soft">
             <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
             Share with the team
           </label>
-          <button className="btn-primary" disabled={!content.trim() || save.isPending} onClick={() => save.mutate()}>Save note</button>
+          <button className="btn-primary" disabled={!content.trim() || save.isPending} onClick={() => save.mutate()}>Зачувај белешка</button>
         </div>
       }
     >
       <textarea
-        autoFocus rows={6} value={content} placeholder="Write something down…"
+        autoFocus rows={6} value={content} placeholder="Запиши нешто…"
         className="field h-auto py-3 resize-none"
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && content.trim()) save.mutate() }}
       />
       <label className="block mt-4">
         <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">
-          Link to a product <span className="font-normal normal-case tracking-normal opacity-70">optional</span>
+          Поврзи со производ <span className="font-normal normal-case tracking-normal opacity-70">опционално</span>
         </span>
         <select className="field" value={productId} onChange={(e) => setProductId(e.target.value)}>
-          <option value="">No product</option>
+          <option value="">Без производ</option>
           {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       </label>

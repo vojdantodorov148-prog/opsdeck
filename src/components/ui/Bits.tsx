@@ -33,7 +33,7 @@ export function EmptyState({ title, hint, action }: { title: string; hint?: stri
 
 export function Loading({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="space-y-2" aria-busy="true" aria-label="Loading">
+    <div className="space-y-2" aria-busy="true" aria-label="Се вчитува">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="h-11 rounded-xl bg-panel animate-pulse" />
       ))}
@@ -42,10 +42,10 @@ export function Loading({ rows = 4 }: { rows?: number }) {
 }
 
 export function ErrorNote({ error }: { error: unknown }) {
-  const message = error instanceof Error ? error.message : 'Something went wrong.'
+  const message = error instanceof Error ? error.message : 'Нешто не е во ред.'
   return (
     <div className="rounded-xl border border-[#F0DCD2] bg-[#FBEFEA] px-4 py-3 text-sm text-[#A0522D]">
-      {message} — reload the page, and check your Supabase connection if it repeats.
+      {message} — освежете ја страницата и проверете ја Supabase конекцијата ако се повторува.
     </div>
   )
 }

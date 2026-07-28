@@ -51,7 +51,7 @@ export function GiveTaskModal() {
 
   const title = product && market ? `${product.name} — ${market.name}`
     : product ? product.name
-    : describeDeliverables(items) || 'Task'
+    : describeDeliverables(items) || 'Задача'
 
   const save = useMutation({
     mutationFn: () =>
@@ -69,7 +69,7 @@ export function GiveTaskModal() {
       qc.invalidateQueries({ queryKey: ['tasks'] })
       qc.invalidateQueries({ queryKey: ['my-week'] })
       qc.invalidateQueries({ queryKey: ['activity'] })
-      toast.success(`Assigned to ${people.find((p) => p.id === assignee)?.full_name ?? 'team'}`)
+      toast.success(`Доделено на ${people.find((p) => p.id === assignee)?.full_name ?? 'тимот'}`)
       close()
     },
     onError: (e: Error) => toast.error(e.message),
@@ -81,18 +81,18 @@ export function GiveTaskModal() {
     <Modal
       open={open}
       onClose={close}
-      title="Give a task"
-      description="Pick what needs making and who makes it. Ops Deck files it everywhere else."
+      title="Додели задача"
+      description="Избери што треба да се изработи и кој ќе го направи. Системот автоматски ќе го распореди на сите потребни места."
       footer={
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-ink-soft">
-            Goes to <span className="font-medium text-ink">{DEPARTMENT[department].label}</span>
+            Оди во <span className="font-medium text-ink">{DEPARTMENT[department].label}</span>
             {product && market ? ` · ${product.name} · ${market.code}` : ''}
           </p>
           <div className="flex gap-2">
-            <button className="btn-quiet" onClick={close}>Cancel</button>
+            <button className="btn-quiet" onClick={close}>Откажи</button>
             <button className="btn-primary" disabled={!valid || save.isPending} onClick={() => save.mutate()}>
-              {save.isPending ? 'Assigning…' : 'Assign task'}
+              {save.isPending ? 'Се доделува…' : 'Додели задача'}
             </button>
           </div>
         </div>
@@ -100,27 +100,27 @@ export function GiveTaskModal() {
     >
       <div className="space-y-5">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Product">
+          <Field label="Производ">
             <select className="field" value={productId} onChange={(e) => setProductId(e.target.value)}>
-              <option value="">No product</option>
+              <option value="">Без производ</option>
               {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </Field>
-          <Field label="Market">
+          <Field label="Пазар">
             <select className="field" value={marketId} onChange={(e) => setMarketId(e.target.value)}>
-              <option value="">No market</option>
+              <option value="">Без пазар</option>
               {markets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </Field>
         </div>
 
-        <Field label="Deliverables">
+        <Field label="Испораки">
           <div className="space-y-2">
             {items.map((item, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input
                   type="number" min={1} max={99} value={item.quantity}
-                  aria-label="Quantity"
+                  aria-label="Количина"
                   className="field w-16 text-center"
                   onChange={(e) =>
                     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, quantity: Number(e.target.value) || 1 } : it)))
@@ -128,7 +128,7 @@ export function GiveTaskModal() {
                 />
                 <span className="text-ink-soft text-sm">×</span>
                 <select
-                  className="field flex-1" value={item.type} aria-label="Deliverable type"
+                  className="field flex-1" value={item.type} aria-label="Тип на испорака"
                   onChange={(e) =>
                     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, type: e.target.value as DeliverableType } : it)))
                   }
@@ -141,7 +141,7 @@ export function GiveTaskModal() {
                 </select>
                 {items.length > 1 && (
                   <button
-                    className="btn-ghost h-10 w-10 px-0" aria-label="Remove deliverable"
+                    className="btn-ghost h-10 w-10 px-0" aria-label="Избриши испорака"
                     onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
                   >
                     <Trash2 size={16} />
@@ -150,12 +150,12 @@ export function GiveTaskModal() {
               </div>
             ))}
             <button className="btn-ghost -ml-1" onClick={() => setItems((prev) => [...prev, { ...BLANK }])}>
-              <Plus size={15} /> Add deliverable
+              <Plus size={15} /> Додај испорака
             </button>
           </div>
         </Field>
 
-        <Field label="Assign to">
+        <Field label="Додели на">
           <div className="flex flex-wrap gap-2">
             {people.map((p) => (
               <button
@@ -173,11 +173,11 @@ export function GiveTaskModal() {
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Due" optional>
+          <Field label="Рок" optional>
             <input type="date" className="field" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </Field>
-          <Field label="Notes" optional>
-            <input className="field" placeholder="Anything they need to know" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <Field label="Белешки" optional>
+            <input className="field" placeholder="Сѐ што треба да знае" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Field>
         </div>
 
@@ -193,7 +193,7 @@ function Field({ label, optional, children }: { label: string; optional?: boolea
   return (
     <label className="block">
       <span className="block mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft">
-        {label}{optional && <span className="ml-1.5 font-normal normal-case tracking-normal opacity-70">optional</span>}
+        {label}{optional && <span className="ml-1.5 font-normal normal-case tracking-normal opacity-70">опционално</span>}
       </span>
       {children}
     </label>

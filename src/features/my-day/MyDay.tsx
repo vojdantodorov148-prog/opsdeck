@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { addWeeks, format } from 'date-fns'
+import { addWeeks } from 'date-fns'
 import { ChevronLeft, ChevronRight, Plus, GripVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader, Loading, ErrorNote } from '@/components/ui/Bits'
 import { TaskDrawer } from '@/features/tasks/TaskDrawer'
 import { useUserId } from '@/features/auth/session'
 import { createPersonalTask, myWeek, rescheduleTask, setTaskStatus } from '@/services/tasks'
-import { iso, isToday, weekDays, weekLabel } from '@/lib/week'
+import { dateMk, iso, isToday, weekdayMk, weekDays, weekLabel } from '@/lib/week'
 import { DEPARTMENT } from '@/lib/status'
 import { cn } from '@/lib/cn'
 import type { TaskWithRelations } from '@/types/db'
@@ -76,13 +76,13 @@ export function MyDay() {
   return (
     <div className="max-w-[1000px]">
       <PageHeader
-        title="My Day"
-        subtitle="Your week. Company work lands here automatically; personal work you type in."
+        title="Мој ден"
+        subtitle="Твојата недела. Службените задачи се додаваат автоматски, а личните ги внесуваш сам."
         action={
           <div className="flex items-center gap-1">
-            <button className="btn-quiet h-9 w-9 px-0" onClick={() => setAnchor((a) => addWeeks(a, -1))} aria-label="Previous week"><ChevronLeft size={16} /></button>
-            <button className="btn-quiet h-9 px-3 text-xs" onClick={() => setAnchor(new Date())}>This week</button>
-            <button className="btn-quiet h-9 w-9 px-0" onClick={() => setAnchor((a) => addWeeks(a, 1))} aria-label="Next week"><ChevronRight size={16} /></button>
+            <button className="btn-quiet h-9 w-9 px-0" onClick={() => setAnchor((a) => addWeeks(a, -1))} aria-label="Претходна недела"><ChevronLeft size={16} /></button>
+            <button className="btn-quiet h-9 px-3 text-xs" onClick={() => setAnchor(new Date())}>Оваа недела</button>
+            <button className="btn-quiet h-9 w-9 px-0" onClick={() => setAnchor((a) => addWeeks(a, 1))} aria-label="Следна недела"><ChevronRight size={16} /></button>
           </div>
         }
       />
@@ -96,7 +96,7 @@ export function MyDay() {
               const key = iso(day)
               const list = byDay.map.get(key) ?? []
               return (
-                <DayLane key={key} id={key} today={isToday(day)} label={format(day, 'EEEE')} date={format(day, 'd MMM')}>
+                <DayLane key={key} id={key} today={isToday(day)} label={weekdayMk(day)} date={dateMk(day)}>
                   {list.map((t) => (
                     <TaskRow key={t.id} task={t} onOpen={() => setOpenTask(t.id)} onComplete={() => complete.mutate(t.id)} />
                   ))}
@@ -107,7 +107,7 @@ export function MyDay() {
                       <input
                         autoFocus
                         className="flex-1 bg-transparent text-sm outline-none"
-                        placeholder="Type and press Enter"
+                        placeholder="Напиши и притисни Enter"
                         value={draft.value}
                         onChange={(e) => setDraft({ day: key, value: e.target.value })}
                         onBlur={() => setDraft(null)}
@@ -125,7 +125,7 @@ export function MyDay() {
                       className="flex items-center gap-2 h-10 px-3 w-full text-sm text-ink-soft hover:text-teal-700 rounded-xl row-hover"
                       onClick={() => setDraft({ day: key, value: '' })}
                     >
-                      <Plus size={15} /> Add something
+                      <Plus size={15} /> Додај нешто
                     </button>
                   )}
                 </DayLane>
@@ -133,7 +133,7 @@ export function MyDay() {
             })}
 
             {byDay.unscheduled.length > 0 && (
-              <DayLane id="unscheduled" label="Unscheduled" date="no day chosen">
+              <DayLane id="unscheduled" label="Нераспоредено" date="без избран ден">
                 {byDay.unscheduled.map((t) => (
                   <TaskRow key={t.id} task={t} onOpen={() => setOpenTask(t.id)} onComplete={() => complete.mutate(t.id)} />
                 ))}
@@ -157,7 +157,7 @@ function DayLane({ id, label, date, today, children }: {
       <header className="flex items-baseline gap-3 pb-2 border-b border-line">
         <h2 className={cn('text-sm font-semibold uppercase tracking-wide', today ? 'text-teal-600' : 'text-ink')}>{label}</h2>
         <span className="text-xs text-ink-soft">{date}</span>
-        {today && <span className="ml-auto text-[11px] font-medium text-teal-600">Today</span>}
+        {today && <span className="ml-auto text-[11px] font-medium text-teal-600">Денес</span>}
       </header>
       <div className="pt-1">{children}</div>
     </section>
@@ -167,7 +167,7 @@ function DayLane({ id, label, date, today, children }: {
 function TaskRow({ task, onOpen, onComplete }: { task: TaskWithRelations; onOpen: () => void; onComplete: () => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id })
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
-  const label = task.source === 'personal' ? 'Personal' : DEPARTMENT[task.department].label
+  const label = task.source === 'personal' ? 'Лично' : DEPARTMENT[task.department].label
 
   return (
     <div
@@ -176,12 +176,12 @@ function TaskRow({ task, onOpen, onComplete }: { task: TaskWithRelations; onOpen
     >
       <button
         className="grid place-items-center text-ink-soft/40 opacity-0 group-hover:opacity-100 cursor-grab"
-        aria-label="Drag to another day" {...attributes} {...listeners}
+        aria-label="Премести во друг ден" {...attributes} {...listeners}
       >
         <GripVertical size={15} />
       </button>
       <button
-        onClick={onComplete} aria-label={`Complete ${task.title}`}
+        onClick={onComplete} aria-label={`Заврши ${task.title}`}
         className="h-[18px] w-[18px] rounded-full border-2 border-line hover:border-teal-400 hover:bg-teal-50 shrink-0 transition"
       />
       <span className="w-14 text-xs text-ink-soft tabular-nums shrink-0">

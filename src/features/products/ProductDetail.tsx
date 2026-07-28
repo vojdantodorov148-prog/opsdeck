@@ -13,12 +13,12 @@ import { listNotes } from '@/services/signal'
 import { PRODUCT_STATUS, TEST_STATUS } from '@/lib/status'
 import { useActions } from '@/app/actions'
 
-const TABS = ['Overview', 'Markets', 'Links', 'Active work', 'Notes'] as const
+const TABS = ['Преглед', 'Пазари', 'Линкови', 'Активна работа', 'Белешки'] as const
 
 export function ProductDetail() {
   const { id = '' } = useParams()
   const actions = useActions()
-  const [tab, setTab] = useState<(typeof TABS)[number]>('Overview')
+  const [tab, setTab] = useState<(typeof TABS)[number]>('Преглед')
   const [openTask, setOpenTask] = useState<string | null>(null)
   const [cell, setCell] = useState<{ productId: string; marketId: string } | null>(null)
 
@@ -34,7 +34,7 @@ export function ProductDetail() {
   const margin = product.selling_price && product.cogs ? product.selling_price - product.cogs : null
   const activeWork = tasks.filter((t) => t.status !== 'done')
   const links = [
-    product.main_url ? { id: 'main', label: 'Product page', url: product.main_url } : null,
+    product.main_url ? { id: 'main', label: 'Продукт страница', url: product.main_url } : null,
     product.supplier_url ? { id: 'sup', label: 'Supplier', url: product.supplier_url } : null,
     product.assets_url ? { id: 'as', label: 'Assets', url: product.assets_url } : null,
     ...(product.links ?? []),
@@ -43,26 +43,26 @@ export function ProductDetail() {
   return (
     <div className="max-w-[1000px]">
       <Link to="/products" className="inline-flex items-center gap-1.5 text-sm text-ink-soft hover:text-teal-700 mb-4">
-        <ArrowLeft size={15} /> Products
+        <ArrowLeft size={15} /> Производи
       </Link>
 
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-[26px] font-semibold tracking-tight">{product.name}</h1>
-          <p className="mt-1 text-sm text-ink-soft">{product.brand?.name ?? 'No brand'}</p>
+          <p className="mt-1 text-sm text-ink-soft">{product.brand?.name ?? 'Без бренд'}</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge className="bg-panel border-line text-ink-soft">{PRODUCT_STATUS[product.status]}</Badge>
-          <button className="btn-quiet" onClick={() => actions.open('start-test', { productId: id })}>Start test</button>
-          <button className="btn-primary" onClick={() => actions.open('give-task', { productId: id })}>Give task</button>
+          <button className="btn-quiet" onClick={() => actions.open('start-test', { productId: id })}>Започни тест</button>
+          <button className="btn-primary" onClick={() => actions.open('give-task', { productId: id })}>Додели задача</button>
         </div>
       </header>
 
       <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Price" value={product.selling_price ? `${product.selling_price} ${product.currency}` : '—'} />
+        <Stat label="Цена" value={product.selling_price ? `${product.selling_price} ${product.currency}` : '—'} />
         <Stat label="Break-even CPA" value={product.break_even_cpa ?? '—'} />
         <Stat label="COGS" value={product.cogs ?? '—'} />
-        <Stat label="Gross margin" value={margin !== null ? `${margin.toFixed(2)} ${product.currency}` : '—'} />
+        <Stat label="Бруто маржа" value={margin !== null ? `${margin.toFixed(2)} ${product.currency}` : '—'} />
       </div>
 
       <nav className="mt-6 flex gap-1 border-b border-line" role="tablist">
@@ -78,13 +78,13 @@ export function ProductDetail() {
       </nav>
 
       <div className="pt-5">
-        {tab === 'Overview' && (
+        {tab === 'Преглед' && (
           <div className="panel p-5 text-sm text-ink-soft whitespace-pre-wrap">
-            {product.notes || 'No overview written yet.'}
+            {product.notes || 'Сѐ уште нема внесен преглед.'}
           </div>
         )}
 
-        {tab === 'Markets' && (
+        {tab === 'Пазари' && (
           <div className="panel p-2">
             <ul className="divide-y divide-line">
               {markets.map((m) => {
@@ -108,9 +108,9 @@ export function ProductDetail() {
           </div>
         )}
 
-        {tab === 'Links' && (
+        {tab === 'Линкови' && (
           <div className="panel p-2">
-            {links.length === 0 ? <EmptyState title="No links yet" hint="Add a product page, supplier or assets folder." /> : (
+            {links.length === 0 ? <EmptyState title="Сѐ уште нема линкови" hint="Додај продукт страница, добавувач или папка со материјали." /> : (
               <ul className="divide-y divide-line">
                 {links.map((l) => (
                   <li key={l.id}>
@@ -127,23 +127,23 @@ export function ProductDetail() {
           </div>
         )}
 
-        {tab === 'Active work' && (
+        {tab === 'Активна работа' && (
           <div className="panel p-2">
             {activeWork.length === 0
-              ? <EmptyState title="Nothing in production" hint="Work assigned against this product appears here." />
+              ? <EmptyState title="Нема активна продукција" hint="Работата поврзана со овој производ ќе се појави тука." />
               : <TaskList tasks={activeWork} onOpen={setOpenTask} />}
           </div>
         )}
 
-        {tab === 'Notes' && (
+        {tab === 'Белешки' && (
           <div className="panel p-5 space-y-3">
-            <button className="btn-quiet" onClick={() => actions.open('add-note', { productId: id })}>Add note</button>
-            {notes.length === 0 ? <p className="text-sm text-ink-soft">No notes on this product yet.</p> : (
+            <button className="btn-quiet" onClick={() => actions.open('add-note', { productId: id })}>Додај белешка</button>
+            {notes.length === 0 ? <p className="text-sm text-ink-soft">Сѐ уште нема белешки за овој производ.</p> : (
               <ul className="space-y-3">
                 {notes.map((n) => (
                   <li key={n.id} className="rounded-xl border border-line p-3">
                     <p className="text-sm whitespace-pre-wrap">{n.content}</p>
-                    <p className="mt-1.5 text-[11px] text-ink-soft">{new Date(n.created_at).toLocaleDateString()}</p>
+                    <p className="mt-1.5 text-[11px] text-ink-soft">{new Date(n.created_at).toLocaleDateString('mk-MK')}</p>
                   </li>
                 ))}
               </ul>

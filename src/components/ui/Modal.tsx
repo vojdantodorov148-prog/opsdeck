@@ -32,7 +32,7 @@ export function Modal({
             <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
             {description && <p className="mt-1 text-sm text-ink-soft">{description}</p>}
           </div>
-          <button className="btn-ghost h-8 w-8 px-0" onClick={onClose} aria-label="Close"><X size={16} /></button>
+          <button className="btn-ghost h-8 w-8 px-0" onClick={onClose} aria-label="Затвори"><X size={16} /></button>
         </header>
         <div className="px-6 py-5 max-h-[70vh] overflow-y-auto scrollbar-thin">{children}</div>
         {footer && <footer className="px-6 py-4 border-t border-line bg-panel/60 rounded-b-3xl">{footer}</footer>}
