@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Settings2 } from 'lucide-react'
 import { PageHeader, Loading, ErrorNote, EmptyState } from '@/components/ui/Bits'
 import { TestCellDrawer } from './TestCellDrawer'
+import { MarketManagerModal } from './MarketManagerModal'
 import { listProducts, listTests } from '@/services/products'
 import { listMarkets } from '@/services/reference'
 import { TEST_STATUS } from '@/lib/status'
 import { useActions } from '@/app/actions'
 import { cn } from '@/lib/cn'
+import { useSession } from '@/features/auth/session'
 import type { TestStatus } from '@/types/db'
 
 const VIEWS = ['Матрица', 'Тековни', 'Историја'] as const
@@ -14,8 +17,10 @@ const PIPELINE: TestStatus[] = ['preparing', 'ready', 'testing']
 
 export function ProductTesting() {
   const actions = useActions()
+  const { can } = useSession()
   const [view, setView] = useState<(typeof VIEWS)[number]>('Матрица')
   const [cell, setCell] = useState<{ productId: string; marketId: string } | null>(null)
+  const [managingMarkets, setManagingMarkets] = useState(false)
 
   const { data: products = [], isLoading, error } = useQuery({ queryKey: ['products'], queryFn: listProducts })
   const { data: markets = [] } = useQuery({ queryKey: ['markets'], queryFn: listMarkets })
@@ -29,7 +34,17 @@ export function ProductTesting() {
       <PageHeader
         title="Продукт тестирање"
         subtitle="Секој производ во секој пазар. Креативните концепти се следат во Creative Testing Calendar."
-        action={<button className="btn-primary" onClick={() => actions.open('start-test')}>Започни тест</button>}
+        action={(
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {(can('products.manage') || can('testing.manage')) && (
+              <button className="btn-quiet h-10 gap-2" onClick={() => setManagingMarkets(true)}>
+                <Settings2 size={15} />
+                Управувај пазари
+              </button>
+            )}
+            <button className="btn-primary" onClick={() => actions.open('start-test')}>Започни тест</button>
+          </div>
+        )}
       />
 
       <div className="flex gap-1 mb-4">
@@ -141,6 +156,7 @@ export function ProductTesting() {
       )}
 
       <TestCellDrawer cell={cell} onClose={() => setCell(null)} />
+      <MarketManagerModal open={managingMarkets} onClose={() => setManagingMarkets(false)} />
     </div>
   )
 }

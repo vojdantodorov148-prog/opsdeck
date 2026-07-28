@@ -9,7 +9,7 @@ import { TaskDrawer } from '@/features/tasks/TaskDrawer'
 import { useActions } from '@/app/actions'
 import { useSession, useUserId } from '@/features/auth/session'
 import { myWeek, listTasks } from '@/services/tasks'
-import { getLevel, levelBounds, listActivity } from '@/services/signal'
+import { listActivity } from '@/services/signal'
 import { getSetting, listProfiles, listTools } from '@/services/reference'
 import { listTests } from '@/services/products'
 import { iso, weekDays } from '@/lib/week'
@@ -47,11 +47,6 @@ export function Home() {
     enabled: Boolean(userId),
   })
   const { data: activity = [] } = useQuery({ queryKey: ['activity'], queryFn: () => listActivity(5) })
-  const { data: level } = useQuery({
-    queryKey: ['level', userId],
-    queryFn: () => getLevel(userId),
-    enabled: Boolean(userId),
-  })
   const { data: landing = [] } = useQuery({ queryKey: ['tasks', 'landing'], queryFn: () => listTasks({ department: 'landing' }) })
   const { data: creative = [] } = useQuery({ queryKey: ['tasks', 'creative'], queryFn: () => listTasks({ department: 'creative' }) })
   const { data: tests = [] } = useQuery({ queryKey: ['tests'], queryFn: listTests })
@@ -63,12 +58,6 @@ export function Home() {
   const todayTasks = week
     .filter((task) => (task.scheduled_date ?? task.due_date ?? today) <= today && task.status !== 'done')
     .slice(0, 4)
-
-  const levelProgress = (() => {
-    if (!level) return 0
-    const { floor, ceiling } = levelBounds(level.level)
-    return ((level.total_xp - floor) / Math.max(1, ceiling - floor)) * 100
-  })()
 
   const counts = {
     landing: landing.filter((task) => task.status !== 'done').length,
@@ -86,7 +75,7 @@ export function Home() {
       <p className="mt-1 text-[14px] text-ink-soft">Фокусирај се на најважното денес.</p>
 
       <div className="mt-3">
-        <Campus counts={counts} imageUrl={campus?.image_url ?? import.meta.env.VITE_CAMPUS_IMAGE_URL} level={level?.level ?? 1} progress={levelProgress} />
+        <Campus counts={counts} imageUrl={campus?.image_url ?? import.meta.env.VITE_CAMPUS_IMAGE_URL} />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">

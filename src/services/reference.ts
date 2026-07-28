@@ -43,3 +43,21 @@ export async function getSetting<T>(key: string): Promise<T | null> {
   if (error) throw error
   return (data?.value ?? null) as T | null
 }
+
+export async function addMarket(input: Pick<Market, 'code' | 'name' | 'currency'> & { sort_order?: number }) {
+  const payload = {
+    code: input.code.trim().toUpperCase(),
+    name: input.name.trim(),
+    currency: input.currency.trim().toUpperCase() || 'EUR',
+    sort_order: input.sort_order ?? 0,
+    active: true,
+  }
+  const { data, error } = await supabase.from('markets').insert(payload).select('*').single()
+  if (error) throw error
+  return data as Market
+}
+
+export async function deleteMarket(id: string) {
+  const { error } = await supabase.from('markets').delete().eq('id', id)
+  if (error) throw error
+}

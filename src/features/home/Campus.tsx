@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Flag, Rocket, FlaskConical, Building2, Wrench, Sparkles } from 'lucide-react'
+import { Flag, Rocket, FlaskConical, Building2, Wrench } from 'lucide-react'
 import { BUILDINGS, buildCampusSvg, labelAnchors } from './campusScene'
 
 const ICONS = { landing: Flag, creative: Rocket, testing: FlaskConical, office: Building2, tools: Wrench }
@@ -8,13 +8,9 @@ const ICONS = { landing: Flag, creative: Rocket, testing: FlaskConical, office: 
 export function Campus({
   counts,
   imageUrl,
-  level = 1,
-  progress = 0,
 }: {
   counts: Record<string, number | undefined>
   imageUrl?: string | null
-  level?: number
-  progress?: number
 }) {
   const navigate = useNavigate()
   const hostRef = useRef<HTMLDivElement>(null)
@@ -37,7 +33,6 @@ export function Campus({
     return () => { host.removeEventListener('click', onClick); host.removeEventListener('keydown', onKey) }
   }, [navigate])
 
-  const activeZones = Object.values(counts).filter((value) => (value ?? 0) > 0).length
 
   return (
     <section aria-label="Кампус на компанијата" className="panel campus-frame overflow-hidden">
@@ -51,24 +46,6 @@ export function Campus({
             dangerouslySetInnerHTML={{ __html: svg }}
           />
         )}
-
-        <div className="absolute left-3 top-3 flex items-center gap-3 rounded-2xl border border-white/70 bg-white/80 px-3 py-2 shadow-card backdrop-blur-xl">
-          <span className="grid h-8 w-8 place-items-center rounded-xl bg-teal-500 text-white shadow-sm"><Sparkles size={15} /></span>
-          <div className="min-w-[132px]">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-soft">OPS Campus</span>
-              <span className="text-[11px] font-semibold text-teal-700">Ниво {level}</span>
-            </div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-teal-100">
-              <div className="h-full rounded-full bg-teal-500 transition-all" style={{ width: `${Math.max(4, Math.min(100, progress))}%` }} />
-            </div>
-          </div>
-        </div>
-
-        <div className="absolute right-3 top-3 rounded-xl border border-white/70 bg-white/75 px-3 py-2 text-right shadow-card backdrop-blur-xl">
-          <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">Активни зони</p>
-          <p className="text-sm font-semibold text-ink">{activeZones} / {BUILDINGS.length}</p>
-        </div>
 
         {BUILDINGS.map((building) => {
           const Icon = ICONS[building.id]

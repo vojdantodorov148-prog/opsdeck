@@ -5,9 +5,9 @@ import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader, Loading, EmptyState, ErrorNote, Badge } from '@/components/ui/Bits'
 import { Modal } from '@/components/ui/Modal'
-import { deleteProduct, listProducts, listTests, saveProduct } from '@/services/products'
-import { listBrands, listMarkets } from '@/services/reference'
-import { PRODUCT_STATUS, TEST_STATUS } from '@/lib/status'
+import { deleteProduct, listProducts, saveProduct } from '@/services/products'
+import { listBrands } from '@/services/reference'
+import { PRODUCT_STATUS } from '@/lib/status'
 import { useSession } from '@/features/auth/session'
 import type { Product, ProductStatus } from '@/types/db'
 
@@ -19,8 +19,6 @@ export function Products() {
   const [adding, setAdding] = useState(false)
   const [deleting, setDeleting] = useState<ProductRow | null>(null)
   const { data: products = [], isLoading, error } = useQuery({ queryKey: ['products'], queryFn: listProducts })
-  const { data: tests = [] } = useQuery({ queryKey: ['tests'], queryFn: listTests })
-  const { data: markets = [] } = useQuery({ queryKey: ['markets'], queryFn: listMarkets })
 
   const remove = useMutation({
     mutationFn: (id: string) => deleteProduct(id),
@@ -38,12 +36,12 @@ export function Products() {
     <div className="max-w-[1100px]">
       <PageHeader
         title="Производи"
-        subtitle="Главна база за цени, break-even, трошоци и пазари за секој производ."
+        subtitle="Главна база за цени, break-even, трошоци и статус за секој производ."
         action={can('products.manage') ? <button className="btn-primary" onClick={() => setAdding(true)}>Додај производ</button> : undefined}
       />
 
       {error ? <ErrorNote error={error} /> : isLoading ? <Loading rows={5} /> : products.length === 0 ? (
-        <div className="panel"><EmptyState title="Сѐ уште нема производи" hint="Додај го првиот производ за да започнеш со следење по пазари." /></div>
+        <div className="panel"><EmptyState title="Сѐ уште нема производи" hint="Додај го првиот производ за да започнеш со работа." /></div>
       ) : (
         <div className="panel overflow-x-auto scrollbar-thin">
           <table className="w-full text-sm">
@@ -54,15 +52,12 @@ export function Products() {
                 <th className="px-4 py-3 font-semibold text-right">Цена</th>
                 <th className="px-4 py-3 font-semibold text-right">Break-even CPA</th>
                 <th className="px-4 py-3 font-semibold text-right">COGS</th>
-                <th className="px-4 py-3 font-semibold">Пазари</th>
                 <th className="px-4 py-3 font-semibold">Статус</th>
                 {can('products.manage') && <th className="px-3 py-3 font-semibold text-right">Акции</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {products.map((product) => {
-                const productTests = tests.filter((test) => test.product_id === product.id && test.status !== 'not_tested')
-                return (
+              {products.map((product) => (
                   <tr key={product.id} className="row-hover">
                     <td className="px-4 py-3 font-medium">
                       <Link to={`/products/${product.id}`} className="hover:text-teal-700">{product.name}</Link>
@@ -71,21 +66,6 @@ export function Products() {
                     <td className="px-4 py-3 text-right tabular-nums">{product.selling_price ? `${product.selling_price} ${product.currency}` : '—'}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{product.break_even_cpa ?? '—'}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{product.cogs ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        {productTests.slice(0, 5).map((test) => {
-                          const market = markets.find((item) => item.id === test.market_id)
-                          return (
-                            <span key={test.id} title={`${market?.name}: ${TEST_STATUS[test.status].label}`}
-                              className="inline-flex items-center gap-1 h-6 px-1.5 rounded-md border border-line text-[11px]">
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ background: TEST_STATUS[test.status].dot }} />
-                              {market?.code}
-                            </span>
-                          )
-                        })}
-                        {productTests.length === 0 && <span className="text-ink-soft text-xs">Не е тестиран</span>}
-                      </div>
-                    </td>
                     <td className="px-4 py-3"><Badge className="bg-panel border-line text-ink-soft">{PRODUCT_STATUS[product.status]}</Badge></td>
                     {can('products.manage') && (
                       <td className="px-3 py-3 text-right">
@@ -100,8 +80,7 @@ export function Products() {
                       </td>
                     )}
                   </tr>
-                )
-              })}
+              ))}
             </tbody>
           </table>
         </div>
