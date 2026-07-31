@@ -6,7 +6,7 @@ type Event = {
   body: string | null
 }
 
-const PAGE_KEYS = ['home','my_day','tasks','products','landings','creatives','testing','tools','notes','team','settings'] as const
+const PAGE_KEYS = ['home','my_day','tasks','products','landings','creatives','testing','finance','brands','tools','notes','team','settings'] as const
 
 type Payload = {
   action: 'create' | 'update' | 'delete'

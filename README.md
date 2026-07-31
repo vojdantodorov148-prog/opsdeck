@@ -90,3 +90,11 @@ Product Testing и страницата на производот го чита�
 - Wider, lower and more detailed gamified campus
 
 Run `supabase/migrations/0006_multi_market_realtime_and_my_day_privacy.sql` after updating the code.
+
+## Update 0008: Finance, Brand Drive and delivery links
+
+- `/finance`: P&L, capital, monthly revenue and recurring subscriptions.
+- `/brands`: private Supabase Storage-powered brand document drive.
+- Landing/creative deliverables support a finished-work URL that becomes a one-click button.
+- `netlify/functions/generate-subscriptions.ts` generates due subscription expenses daily.
+- Run `supabase/migrations/0008_finance_brand_drive_and_delivery_links.sql` after update 0007.

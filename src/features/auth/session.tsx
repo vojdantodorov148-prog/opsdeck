@@ -2,11 +2,12 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types/db'
-import type { PageKey } from '@/lib/pages'
+import { DEFAULT_MEMBER_PAGES, type PageKey } from '@/lib/pages'
 
 export type PermissionKey =
   | 'team.manage' | 'tasks.assign'
   | 'products.manage' | 'testing.manage' | 'tools.manage' | 'settings.manage'
+  | 'finance.manage' | 'brands.manage'
 
 interface SessionState {
   session: Session | null
@@ -99,7 +100,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     can: (key) => permissions.has(key),
     canPage: (key) => {
       if (roleKey === 'owner') return true
-      if (!hasPageAccessRules) return key !== 'settings'
+      if (!hasPageAccessRules) return DEFAULT_MEMBER_PAGES.includes(key)
       return pageAccess.has(key)
     },
     refreshProfile: loadUser,

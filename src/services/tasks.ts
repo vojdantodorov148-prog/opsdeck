@@ -166,6 +166,16 @@ export async function rescheduleTask(id: string, scheduledDate: string | null) {
   return updateTask(id, { scheduled_date: scheduledDate })
 }
 
+export async function setDeliverableUrl(id: string, url: string | null) {
+  const value = url?.trim()
+  const normalized = value && !/^https?:\/\//i.test(value) ? `https://${value}` : value
+  const { error } = await supabase
+    .from('task_deliverables')
+    .update({ url: normalized || null })
+    .eq('id', id)
+  if (error) throw error
+}
+
 export async function setDeliverableProgress(id: string, completed: number) {
   const { error } = await supabase
     .from('task_deliverables')

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Home, Sun, CheckSquare, Package, Flag, Palette, FlaskConical,
-  Wrench, FileText, Users, Settings,
+  Wrench, FileText, Users, Settings, WalletCards, FolderKanban,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Logo } from './Logo'
@@ -19,6 +19,8 @@ const NAV: { to: string; label: string; icon: typeof Home; page: PageKey; end?: 
   { to: '/landings', label: 'Лендинг страници', icon: Flag, page: 'landings' },
   { to: '/creatives', label: 'Креативи', icon: Palette, page: 'creatives' },
   { to: '/testing', label: 'Тестирање', icon: FlaskConical, page: 'testing' },
+  { to: '/finance', label: 'Финансии', icon: WalletCards, page: 'finance' },
+  { to: '/brands', label: 'Брендови', icon: FolderKanban, page: 'brands' },
   { to: '/tools', label: 'Алатки', icon: Wrench, page: 'tools' },
   { to: '/notes', label: 'Белешки', icon: FileText, page: 'notes' },
   { to: '/team', label: 'Тим', icon: Users, page: 'team' },

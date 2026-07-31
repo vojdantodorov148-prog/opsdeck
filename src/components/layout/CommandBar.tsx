@@ -39,6 +39,8 @@ export function CommandBar({ open, onClose, onGiveTask, onStartTest, onAddNote }
       { id: 'p-landing', label: 'Лендинг студио', hint: 'Страница', run: go('/landings') },
       { id: 'p-creative', label: 'Креативно студио', hint: 'Страница', run: go('/creatives') },
       { id: 'p-testing', label: 'Продукт тестирање', hint: 'Страница', run: go('/testing/products') },
+      { id: 'p-finance', label: 'Финансии', hint: 'Страница', run: go('/finance') },
+      { id: 'p-brands', label: 'Брендови', hint: 'Страница', run: go('/brands') },
       { id: 'p-notes', label: 'Белешки', hint: 'Страница', run: go('/notes') },
       { id: 'p-team', label: 'Тим', hint: 'Страница', run: go('/team') },
       { id: 'a-task', label: 'Додели задача', hint: 'Акција', run: () => { onClose(); onGiveTask() } },

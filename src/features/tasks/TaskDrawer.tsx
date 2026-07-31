@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Minus, Plus } from 'lucide-react'
+import { Check, ExternalLink, Link2, Minus, Plus, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { Drawer } from '@/components/ui/Drawer'
 import { Avatar } from '@/components/ui/Avatar'
@@ -9,7 +9,7 @@ import { DELIVERABLE_LABELS, progressOf } from '@/lib/deliverables'
 import { DEPARTMENT, TASK_STATUS } from '@/lib/status'
 import {
   addComment, getTask, listComments, resolveReview, setDeliverableProgress,
-  setTaskStatus, submitForReview,
+  setDeliverableUrl, setTaskStatus, submitForReview,
 } from '@/services/tasks'
 import { useSession, useUserId } from '@/features/auth/session'
 
@@ -120,20 +120,23 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
             <Progress value={pct} className="mb-3" />
             <ul className="space-y-1.5">
               {(task.deliverables ?? []).map((d) => (
-                <li key={d.id} className="flex items-center gap-3 h-11 px-3 rounded-xl border border-line">
-                  <span className="flex-1 text-sm">{DELIVERABLE_LABELS[d.type]}</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      className="btn-ghost h-8 w-8 px-0" aria-label="Намали завршена количина"
-                      onClick={() => progressMut.mutate({ id: d.id, value: Math.max(0, d.completed_quantity - 1) })}
-                    ><Minus size={14} /></button>
-                    <span className="w-12 text-center text-sm tabular-nums">{d.completed_quantity}/{d.quantity}</span>
-                    <button
-                      className="btn-ghost h-8 w-8 px-0" aria-label="Зголеми завршена количина"
-                      onClick={() => progressMut.mutate({ id: d.id, value: Math.min(d.quantity, d.completed_quantity + 1) })}
-                    ><Plus size={14} /></button>
+                <li key={d.id} className="rounded-xl border border-line px-3 py-2.5">
+                  <div className="flex items-center gap-3">
+                    <span className="flex-1 text-sm">{DELIVERABLE_LABELS[d.type]}</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="btn-ghost h-8 w-8 px-0" aria-label="Намали завршена количина"
+                        onClick={() => progressMut.mutate({ id: d.id, value: Math.max(0, d.completed_quantity - 1) })}
+                      ><Minus size={14} /></button>
+                      <span className="w-12 text-center text-sm tabular-nums">{d.completed_quantity}/{d.quantity}</span>
+                      <button
+                        className="btn-ghost h-8 w-8 px-0" aria-label="Зголеми завршена количина"
+                        onClick={() => progressMut.mutate({ id: d.id, value: Math.min(d.quantity, d.completed_quantity + 1) })}
+                      ><Plus size={14} /></button>
+                    </div>
+                    {d.completed_quantity >= d.quantity && <Check size={15} className="text-teal-600" />}
                   </div>
-                  {d.completed_quantity >= d.quantity && <Check size={15} className="text-teal-600" />}
+                  <DeliverableLink deliverableId={d.id} initialUrl={d.url} onSaved={refresh} />
                 </li>
               ))}
             </ul>
@@ -165,5 +168,36 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
         </div>
       </div>
     </Drawer>
+  )
+}
+
+
+function DeliverableLink({ deliverableId, initialUrl, onSaved }: { deliverableId: string; initialUrl: string | null; onSaved: () => void }) {
+  const [url, setUrl] = useState(initialUrl ?? '')
+  const save = useMutation({
+    mutationFn: () => setDeliverableUrl(deliverableId, url),
+    onSuccess: () => { onSaved(); toast.success(url.trim() ? 'Линкот е зачуван' : 'Линкот е отстранет') },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <div className="relative min-w-0 flex-1">
+        <Link2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
+        <input
+          className="field h-9 pl-8 pr-3 text-xs"
+          placeholder="Залепи линк до готовиот фајл"
+          value={url}
+          onChange={(event) => setUrl(event.target.value)}
+          onKeyDown={(event) => { if (event.key === 'Enter') save.mutate() }}
+        />
+      </div>
+      <button className="btn-quiet h-9 px-3" onClick={() => save.mutate()} disabled={save.isPending} aria-label="Зачувај линк"><Save size={14} /></button>
+      {url.trim() && (
+        <a href={/^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`} target="_blank" rel="noopener noreferrer" className="btn-primary h-9 px-3 text-xs">
+          <ExternalLink size={14} /> Отвори
+        </a>
+      )}
+    </div>
   )
 }

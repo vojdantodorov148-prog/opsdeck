@@ -12,6 +12,8 @@ import { Tools } from '@/features/tools/Tools'
 import { Notes } from '@/features/notes/Notes'
 import { Team } from '@/features/team/Team'
 import { Settings } from '@/features/settings/Settings'
+import { Finance } from '@/features/finance/Finance'
+import { Brands } from '@/features/brands/Brands'
 import { RequirePage, RequirePermission } from './guards'
 
 export const router = createBrowserRouter([
@@ -28,6 +30,8 @@ export const router = createBrowserRouter([
       { path: 'creatives', element: <RequirePage page="creatives"><Factory department="creative" /></RequirePage> },
       { path: 'testing', element: <RequirePage page="testing"><TestingHub /></RequirePage> },
       { path: 'testing/products', element: <RequirePage page="testing"><ProductTesting /></RequirePage> },
+      { path: 'finance', element: <RequirePage page="finance"><Finance /></RequirePage> },
+      { path: 'brands', element: <RequirePage page="brands"><Brands /></RequirePage> },
       { path: 'tools', element: <RequirePage page="tools"><Tools /></RequirePage> },
       { path: 'notes', element: <RequirePage page="notes"><Notes /></RequirePage> },
       { path: 'team', element: <RequirePage page="team"><Team /></RequirePage> },

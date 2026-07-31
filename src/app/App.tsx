@@ -8,6 +8,7 @@ import { SignIn } from '@/features/auth/SignIn'
 import { isConfigured } from '@/lib/supabase'
 import { Logo } from '@/components/layout/Logo'
 import { MarketRealtime } from '@/features/testing/MarketRealtime'
+import { SharedDataRealtime } from '@/features/realtime/SharedDataRealtime'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false } },
@@ -43,6 +44,7 @@ export default function App() {
       <SessionProvider>
         <ActionsProvider>
           <MarketRealtime />
+          <SharedDataRealtime />
           <Gate />
           <Toaster position="bottom-right" richColors closeButton />
         </ActionsProvider>

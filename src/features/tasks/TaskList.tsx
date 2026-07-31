@@ -1,3 +1,4 @@
+import { ExternalLink, Link2 } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge, Progress } from '@/components/ui/Bits'
 import { DELIVERABLE_LABELS, progressOf } from '@/lib/deliverables'
@@ -12,9 +13,10 @@ export function TaskList({ tasks, onOpen }: { tasks: TaskWithRelations[]; onOpen
         const summary = (t.deliverables ?? [])
           .map((d) => `${d.quantity} × ${DELIVERABLE_LABELS[d.type]}`)
           .join(' · ')
+        const links = (t.deliverables ?? []).filter((d) => Boolean(d.url))
         return (
-          <li key={t.id}>
-            <button className="w-full flex items-center gap-4 py-3 px-2 rounded-xl row-hover text-left" onClick={() => onOpen(t.id)}>
+          <li key={t.id} className="flex items-center gap-2 rounded-xl row-hover px-2">
+            <button className="min-w-0 flex-1 flex items-center gap-4 py-3 text-left" onClick={() => onOpen(t.id)}>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate">{t.title}</p>
                 <p className="text-xs text-ink-soft truncate">{summary || (t.source === 'personal' ? 'Лично' : 'Општа задача')}</p>
@@ -29,6 +31,29 @@ export function TaskList({ tasks, onOpen }: { tasks: TaskWithRelations[]; onOpen
               {t.assignee && <Avatar name={t.assignee.full_name} url={t.assignee.avatar_url} size={26} />}
               <Badge className={TASK_STATUS[t.status].className}>{TASK_STATUS[t.status].label}</Badge>
             </button>
+
+            <div className="hidden sm:flex shrink-0 items-center gap-1 pr-1">
+              {links.length > 0 ? links.slice(0, 3).map((deliverable) => (
+                <a
+                  key={deliverable.id}
+                  href={deliverable.url as string}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Отвори ${DELIVERABLE_LABELS[deliverable.type]}`}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-teal-100 bg-teal-50 px-2 text-xs font-medium text-teal-700 hover:bg-teal-100"
+                >
+                  <ExternalLink size={13} />
+                  Отвори
+                </a>
+              )) : total > 0 ? (
+                <button
+                  onClick={() => onOpen(t.id)}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-line bg-white px-2 text-xs text-ink-soft hover:border-teal-200 hover:text-teal-700"
+                >
+                  <Link2 size={13} /> Додај линк
+                </button>
+              ) : null}
+            </div>
           </li>
         )
       })}

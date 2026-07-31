@@ -8,6 +8,7 @@ export type TaskSource = 'manual' | 'quick_action' | 'workflow' | 'review' | 'pe
 export type Department = 'landing' | 'creative' | 'testing' | 'general'
 export type ReviewStatus = 'pending' | 'approved' | 'changes_requested'
 export type PlanHorizon = 'now' | 'next' | 'later'
+export type FinanceKind = 'income' | 'expense'
 
 export type DeliverableType =
   | 'product_page' | 'advertorial' | 'listicle' | 'quiz' | 'landing_localization' | 'other_landing'
@@ -165,3 +166,75 @@ export interface BrandMetric {
   revenue: number | null; profit: number | null; ad_spend: number | null
 }
 export interface UserLevel { user_id: string; total_xp: number; level: number }
+
+
+export interface FinanceTransaction {
+  id: string
+  transaction_date: string
+  kind: FinanceKind
+  category: string
+  description: string
+  amount: number
+  currency: string
+  source: 'manual' | 'subscription' | 'monthly_revenue'
+  subscription_id: string | null
+  subscription_period: string | null
+  monthly_revenue_id: string | null
+  brand_id: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  brand?: Pick<Brand, 'id' | 'name'> | null
+}
+
+export interface FinanceSubscription {
+  id: string
+  name: string
+  vendor: string | null
+  category: string
+  amount: number
+  currency: string
+  billing_day: number
+  starts_on: string
+  ends_on: string | null
+  active: boolean
+  notes: string | null
+  created_by: string | null
+}
+
+export interface MonthlyRevenue {
+  id: string
+  month: string
+  source: string
+  amount: number
+  currency: string
+  brand_id: string | null
+  notes: string | null
+  created_by: string | null
+  brand?: Pick<Brand, 'id' | 'name'> | null
+}
+
+export interface CapitalAccount {
+  id: string
+  name: string
+  amount: number
+  currency: string
+  notes: string | null
+  updated_by: string | null
+  updated_at: string
+}
+
+export interface BrandDocument {
+  id: string
+  brand_id: string
+  uploaded_by: string | null
+  name: string
+  storage_path: string
+  mime_type: string | null
+  file_size: number | null
+  category: string
+  notes: string | null
+  created_at: string
+  brand?: Pick<Brand, 'id' | 'name' | 'logo_url'> | null
+  uploader?: Pick<Profile, 'id' | 'full_name' | 'avatar_url'> | null
+}
