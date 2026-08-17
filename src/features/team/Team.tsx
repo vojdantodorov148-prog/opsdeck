@@ -11,7 +11,7 @@ import { TaskList } from '@/features/tasks/TaskList'
 import { TaskDrawer } from '@/features/tasks/TaskDrawer'
 import { listProfiles } from '@/services/reference'
 import { listTasks } from '@/services/tasks'
-import { createTeamAccount, deleteTeamAccount, listUserPageAccess, listUserRoles, updateTeamAccount } from '@/services/team'
+import { checkTeamBackend, createTeamAccount, deleteTeamAccount, listUserPageAccess, listUserRoles, updateTeamAccount } from '@/services/team'
 import { APP_PAGES, DEFAULT_MEMBER_PAGES, type PageKey } from '@/lib/pages'
 import { useActions } from '@/app/actions'
 import { useSession, useUserId } from '@/features/auth/session'
@@ -29,6 +29,7 @@ export function Team() {
   const [selected, setSelected] = useState<string | null>(params.get('member'))
   const [openTask, setOpenTask] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [backendChecked, setBackendChecked] = useState(false)
 
   const { data: people = [], isLoading, error } = useQuery({ queryKey: ['profiles'], queryFn: listProfiles })
   const { data: tasks = [] } = useQuery({ queryKey: ['tasks', 'all'], queryFn: () => listTasks({}) })
@@ -59,7 +60,13 @@ export function Team() {
       <PageHeader
         title="Тим"
         subtitle="Членови, тековна работа и пристап до страниците."
-        action={can('team.manage') ? <button className="btn-primary" onClick={() => setAdding(true)}><Plus size={16} /> Додај акаунт</button> : undefined}
+        action={can('team.manage') ? <button className="btn-primary" onClick={async () => {
+          if (!backendChecked) {
+            try { await checkTeamBackend(); setBackendChecked(true) }
+            catch (e) { toast.error(e instanceof Error ? e.message : 'Team backend не е достапен'); return }
+          }
+          setAdding(true)
+        }}><Plus size={16} /> Додај акаунт</button> : undefined}
       />
 
       {error ? <ErrorNote error={error} /> : isLoading ? <Loading rows={4} /> : people.length === 0 ? (
@@ -76,6 +83,7 @@ export function Team() {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm truncate">{profile.full_name}</p>
                     <p className="text-xs text-ink-soft truncate">{profile.job_title ?? 'Тим'}</p>
+                  {profile.email && <p className="text-[11px] text-ink-soft/70 truncate">{profile.email}</p>}
                   </div>
                   {can('team.manage') && <UserCog size={15} className="text-ink-soft/50" />}
                 </div>
@@ -120,6 +128,7 @@ export function Team() {
                   jobTitle: person.job_title ?? '',
                   roleKey: role,
                   pages: selectedAccessRows.length ? pages : DEFAULT_MEMBER_PAGES,
+                  password: '',
                 }}
                 onSaved={refresh}
               />
@@ -169,13 +178,17 @@ function PageChecks({ pages, onChange, includeSettings = false }: { pages: PageK
 
 function AccountEditor({ userId, initial, onSaved }: {
   userId: string
-  initial: { fullName: string; jobTitle: string; roleKey: EditableRole; pages: PageKey[] }
+  initial: { fullName: string; jobTitle: string; roleKey: EditableRole; pages: PageKey[]; password: string }
   onSaved: () => void
 }) {
   const [form, setForm] = useState(initial)
   const save = useMutation({
     mutationFn: () => updateTeamAccount(userId, form),
-    onSuccess: () => { onSaved(); toast.success('Промените се зачувани') },
+    onSuccess: () => {
+      setForm((current) => ({ ...current, password: '' }))
+      onSaved()
+      toast.success('Промените се зачувани')
+    },
     onError: (e: Error) => toast.error(e.message),
   })
 
@@ -185,6 +198,7 @@ function AccountEditor({ userId, initial, onSaved }: {
       <div className="mt-3 space-y-3">
         <input className="field" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Име и презиме" />
         <input className="field" value={form.jobTitle} onChange={(e) => setForm({ ...form, jobTitle: e.target.value })} placeholder="Работна позиција" />
+        <input className="field" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Нова лозинка (опционално)" />
         <select className="field" value={form.roleKey} onChange={(e) => setForm({ ...form, roleKey: e.target.value as EditableRole })}>
           {Object.entries(ROLE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
         </select>

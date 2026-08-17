@@ -10,18 +10,42 @@ export interface TeamAccountInput {
   pages: PageKey[]
 }
 
+export interface TeamAccountUpdateInput {
+  fullName: string
+  jobTitle?: string
+  roleKey: 'admin' | 'manager' | 'member'
+  pages: PageKey[]
+  password?: string
+}
+
 async function callTeamFunction(payload: Record<string, unknown>) {
   const { data: sessionData } = await supabase.auth.getSession()
   const token = sessionData.session?.access_token
-  if (!token) throw new Error('Нема активна сесија.')
+  if (!token) throw new Error('Нема активна сесија. Најави се повторно.')
 
-  const response = await fetch('/.netlify/functions/team-user', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(payload),
-  })
-  const body = await response.json().catch(() => ({})) as { error?: string; userId?: string }
-  if (!response.ok) throw new Error(body.error ?? 'Операцијата не успеа.')
+  let response: Response
+  try {
+    response = await fetch('/.netlify/functions/team-user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    })
+  } catch {
+    throw new Error('Не можам да се поврзам со серверот за управување со тимот.')
+  }
+
+  const raw = await response.text()
+  let body: { error?: string; userId?: string; requestId?: string } = {}
+  try { body = raw ? JSON.parse(raw) as typeof body : {} } catch { /* Netlify may return HTML/text for runtime failures */ }
+
+  if (!response.ok) {
+    if (response.status === 404) throw new Error('Team backend функцијата не е deploy-ирана на Netlify.')
+    const suffix = body.requestId ? ` · ID ${body.requestId.slice(0, 8)}` : ''
+    throw new Error(`${body.error ?? `Серверска грешка (${response.status}).`}${suffix}`)
+  }
   return body
 }
 
@@ -29,12 +53,16 @@ export function createTeamAccount(input: TeamAccountInput) {
   return callTeamFunction({ action: 'create', ...input })
 }
 
-export function updateTeamAccount(userId: string, input: Omit<TeamAccountInput, 'email' | 'password'>) {
+export function updateTeamAccount(userId: string, input: TeamAccountUpdateInput) {
   return callTeamFunction({ action: 'update', userId, ...input })
 }
 
 export function deleteTeamAccount(userId: string) {
   return callTeamFunction({ action: 'delete', userId })
+}
+
+export function checkTeamBackend() {
+  return callTeamFunction({ action: 'health' })
 }
 
 export async function listUserPageAccess() {

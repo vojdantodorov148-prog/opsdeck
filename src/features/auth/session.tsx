@@ -89,6 +89,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session])
 
+  // Access changes made by an owner/admin take effect for the affected user
+  // immediately, without requiring a sign-out or page refresh.
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!userId) return
+
+    const channel = supabase
+      .channel(`access-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'page_access', filter: `user_id=eq.${userId}` }, () => { void loadUser() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles', filter: `user_id=eq.${userId}` }, () => { void loadUser() })
+      .subscribe()
+
+    return () => { void supabase.removeChannel(channel) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id])
+
   const value = useMemo<SessionState>(() => ({
     session,
     profile,
