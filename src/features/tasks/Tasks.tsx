@@ -63,7 +63,6 @@ export function Tasks() {
           <option value="">Сите статуси</option>
           <option value="todo">За работа</option>
           <option value="doing">Во тек</option>
-          <option value="review">За преглед</option>
           <option value="blocked">Блокирано</option>
           <option value="done">Завршено</option>
         </select>

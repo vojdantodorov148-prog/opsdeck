@@ -8,15 +8,14 @@ import { Badge, Progress } from '@/components/ui/Bits'
 import { DELIVERABLE_LABELS, progressOf } from '@/lib/deliverables'
 import { DEPARTMENT, TASK_STATUS } from '@/lib/status'
 import {
-  addComment, getTask, listComments, resolveReview, setDeliverableProgress,
-  setDeliverableUrl, setTaskStatus, submitForReview,
+  addComment, completeTask, getTask, listComments, setDeliverableProgress,
+  setDeliverableUrl, setTaskStatus,
 } from '@/services/tasks'
-import { useSession, useUserId } from '@/features/auth/session'
+import { useUserId } from '@/features/auth/session'
 
 export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose: () => void }) {
   const qc = useQueryClient()
   const userId = useUserId()
-  const { can } = useSession()
   const [comment, setComment] = useState('')
 
   const { data: task } = useQuery({
@@ -45,13 +44,10 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
     mutationFn: (status: Parameters<typeof setTaskStatus>[1]) => setTaskStatus(taskId as string, status),
     onSuccess: refresh,
   })
-  const reviewMut = useMutation({
-    mutationFn: (approve: boolean) => resolveReview(taskId as string, approve),
-    onSuccess: () => { refresh(); toast.success('Прегледот е зачуван') },
-  })
-  const submitMut = useMutation({
-    mutationFn: () => submitForReview(taskId as string, task?.created_by ?? userId),
-    onSuccess: () => { refresh(); toast.success('Испратено за преглед') },
+  const completeMut = useMutation({
+    mutationFn: () => completeTask(taskId as string),
+    onSuccess: () => { refresh(); toast.success('Задачата е завршена') },
+    onError: (e: Error) => toast.error(e.message),
   })
   const commentMut = useMutation({
     mutationFn: () => addComment(taskId as string, userId, comment),
@@ -62,7 +58,6 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
 
   const isPersonal = task.source === 'personal'
   const { total, done, pct } = progressOf(task.deliverables ?? [])
-  const isReviewer = task.created_by === userId || can('tasks.assign')
 
   return (
     <Drawer
@@ -77,18 +72,15 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
       }
       footer={
         <div className="flex flex-wrap items-center gap-2">
-          {task.status === 'review' && isReviewer ? (
-            <>
-              <button className="btn-primary" onClick={() => reviewMut.mutate(true)}>Одобри</button>
-              <button className="btn-quiet" onClick={() => reviewMut.mutate(false)}>Побарај измени</button>
-            </>
-          ) : task.status === 'done' ? (
+          {task.status === 'done' ? (
             <button className="btn-quiet" onClick={() => statusMut.mutate('doing')}>Отвори повторно</button>
           ) : isPersonal ? (
             <button className="btn-primary" onClick={() => statusMut.mutate('done')}>Заврши</button>
           ) : (
             <>
-              <button className="btn-primary" onClick={() => submitMut.mutate()}>Испрати за преглед</button>
+              <button className="btn-primary" disabled={completeMut.isPending} onClick={() => completeMut.mutate()}>
+                {completeMut.isPending ? 'Се завршува…' : 'Завршено'}
+              </button>
               <button className="btn-quiet" onClick={() => statusMut.mutate(task.status === 'blocked' ? 'doing' : 'blocked')}>
                 {task.status === 'blocked' ? 'Одблокирај' : 'Блокирај'}
               </button>
@@ -106,7 +98,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
               {task.assignee.full_name}
             </span>
           )}
-          {task.due_date && <span className="text-sm text-ink-soft">Рок {task.due_date}</span>}
+          {task.due_date && <span className="text-sm text-ink-soft">Рок {formatDue(task.due_date, task.due_time)}</span>}
         </div>
 
         {task.description && <p className="text-sm text-ink-soft whitespace-pre-wrap">{task.description}</p>}
@@ -140,6 +132,26 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {task.product?.main_url && (
+          <div className="rounded-2xl border border-teal-100 bg-teal-50/60 p-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-teal-700">Продукт линк</p>
+                <p className="mt-1 text-sm font-medium text-ink">{task.product.name}</p>
+                <p className="mt-0.5 truncate text-xs text-ink-soft">{task.product.main_url}</p>
+              </div>
+              <a
+                href={task.product.main_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary h-9 shrink-0 px-3 text-xs"
+              >
+                <ExternalLink size={14} /> Отвори
+              </a>
+            </div>
           </div>
         )}
 
@@ -200,4 +212,9 @@ function DeliverableLink({ deliverableId, initialUrl, onSaved }: { deliverableId
       )}
     </div>
   )
+}
+
+function formatDue(date: string, time?: string | null) {
+  const [year, month, day] = date.split('-')
+  return `${day}.${month}.${year}${time ? ` во ${time.slice(0, 5)}` : ''}`
 }

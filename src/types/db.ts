@@ -83,6 +83,7 @@ export interface Task {
   status: TaskStatus
   priority: number | null
   due_date: string | null
+  due_time: string | null
   scheduled_date: string | null
   scheduled_time: string | null
   sort_order: number
@@ -95,7 +96,7 @@ export interface Task {
 
 export interface TaskWithRelations extends Task {
   deliverables: Deliverable[]
-  product?: Pick<Product, 'id' | 'name'> | null
+  product?: Pick<Product, 'id' | 'name' | 'main_url'> | null
   market?: Pick<Market, 'id' | 'code' | 'name'> | null
   assignee?: Pick<Profile, 'id' | 'full_name' | 'avatar_url'> | null
   creator?: Pick<Profile, 'id' | 'full_name'> | null

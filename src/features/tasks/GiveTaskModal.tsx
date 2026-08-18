@@ -27,6 +27,7 @@ export function GiveTaskModal() {
   const [marketIds, setMarketIds] = useState<string[]>([])
   const [assignee, setAssignee] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [dueTime, setDueTime] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<DeliverableDraft[]>([BLANK])
 
@@ -40,6 +41,7 @@ export function GiveTaskModal() {
     setMarketIds(context.marketId ? [context.marketId] : [])
     setAssignee('')
     setDueDate('')
+    setDueTime('')
     setNotes('')
     setItems([BLANK])
   }, [open, context.productId, context.marketId])
@@ -61,6 +63,7 @@ export function GiveTaskModal() {
       assignedTo: assignee,
       deliverables: items.filter((item) => item.quantity > 0),
       dueDate: dueDate || null,
+      dueTime: dueTime || null,
       notes: notes || null,
       testId: context.testId ?? null,
     }),
@@ -107,6 +110,16 @@ export function GiveTaskModal() {
             <option value="">Без производ</option>
             {products.map((productItem) => <option key={productItem.id} value={productItem.id}>{productItem.name}</option>)}
           </select>
+          {product?.main_url && (
+            <a
+              href={product.main_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-teal-700 hover:text-teal-800"
+            >
+              Отвори го главниот продукт линк ↗
+            </a>
+          )}
         </Field>
 
         <Field label="Пазари" optional>
@@ -200,9 +213,12 @@ export function GiveTaskModal() {
           </div>
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Рок" optional>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_150px_1.4fr] gap-3">
+          <Field label="Рок — датум" optional>
             <input type="date" className="field" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
+          </Field>
+          <Field label="Рок — час" optional>
+            <input type="time" className="field" value={dueTime} onChange={(event) => setDueTime(event.target.value)} disabled={!dueDate} />
           </Field>
           <Field label="Белешки" optional>
             <input className="field" placeholder="Сѐ што треба да знае" value={notes} onChange={(event) => setNotes(event.target.value)} />

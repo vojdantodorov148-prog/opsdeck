@@ -5,7 +5,7 @@ import { departmentFor, describeDeliverables, type DeliverableDraft } from '@/li
 const SELECT = `
   *,
   deliverables:task_deliverables(*),
-  product:products(id,name),
+  product:products(id,name,main_url),
   market:markets(id,code,name),
   assignee:profiles!tasks_assigned_to_fkey(id,full_name,avatar_url),
   creator:profiles!tasks_created_by_fkey(id,full_name)
@@ -48,6 +48,7 @@ export interface AssignmentInput {
   productId?: string | null
   marketId?: string | null
   dueDate?: string | null
+  dueTime?: string | null
   notes?: string | null
   testId?: string | null
 }
@@ -61,6 +62,7 @@ export async function createAssignment(input: AssignmentInput) {
     p_product_id: input.productId ?? null,
     p_market_id: input.marketId ?? null,
     p_due_date: input.dueDate ?? null,
+    p_due_time: input.dueTime ?? null,
     p_notes: input.notes ?? null,
     p_test_id: input.testId ?? null,
   })
@@ -82,6 +84,7 @@ export interface AssignmentBundleInput {
   assignedTo: string
   deliverables: DeliverableDraft[]
   dueDate?: string | null
+  dueTime?: string | null
   notes?: string | null
   testId?: string | null
 }
@@ -125,6 +128,7 @@ export async function createAssignmentBundle(input: AssignmentBundleInput) {
         productId: input.productId ?? null,
         marketId: market.id || null,
         dueDate: input.dueDate ?? null,
+        dueTime: input.dueTime ?? null,
         notes: input.notes ?? null,
         testId: input.testId ?? null,
       }))
@@ -192,6 +196,11 @@ export async function myWeek(from: string, to: string) {
   const { data: full, error: e2 } = await supabase.from('tasks').select(SELECT).in('id', ids)
   if (e2) throw e2
   return (full ?? []) as unknown as TaskWithRelations[]
+}
+
+export async function completeTask(taskId: string) {
+  const { error } = await supabase.rpc('complete_task', { p_task_id: taskId })
+  if (error) throw error
 }
 
 export async function submitForReview(taskId: string, reviewerId: string) {

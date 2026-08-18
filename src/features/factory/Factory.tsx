@@ -14,8 +14,7 @@ const COPY: Record<'landing' | 'creative', { title: string; subtitle: string }> 
 
 const SECTIONS: { key: string; label: string; match: (t: TaskWithRelations) => boolean }[] = [
   { key: 'attention', label: 'Потребно внимание', match: (t) => t.status === 'blocked' || (t.due_date !== null && t.due_date < new Date().toISOString().slice(0, 10) && t.status !== 'done') },
-  { key: 'progress', label: 'Во тек', match: (t) => t.status === 'doing' || t.status === 'todo' },
-  { key: 'review', label: 'Чека преглед', match: (t) => t.status === 'review' },
+  { key: 'progress', label: 'Во тек', match: (t) => t.status === 'doing' || t.status === 'todo' || t.status === 'review' },
   { key: 'done', label: 'Последно завршено', match: (t) => t.status === 'done' },
 ]
 

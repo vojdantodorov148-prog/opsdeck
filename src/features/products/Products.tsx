@@ -49,9 +49,10 @@ export function Products() {
               <tr className="text-left text-[11px] uppercase tracking-wide text-ink-soft">
                 <th className="px-4 py-3 font-semibold">Производ</th>
                 <th className="px-4 py-3 font-semibold">Бренд</th>
-                <th className="px-4 py-3 font-semibold text-right">Цена</th>
+                <th className="px-4 py-3 font-semibold">SKU</th>
+                <th className="px-4 py-3 font-semibold text-right">Продажна</th>
                 <th className="px-4 py-3 font-semibold text-right">Break-even CPA</th>
-                <th className="px-4 py-3 font-semibold text-right">COGS</th>
+                <th className="px-4 py-3 font-semibold text-right">Набавна (COGS)</th>
                 <th className="px-4 py-3 font-semibold">Статус</th>
                 {can('products.manage') && <th className="px-3 py-3 font-semibold text-right">Акции</th>}
               </tr>
@@ -63,6 +64,7 @@ export function Products() {
                       <Link to={`/products/${product.id}`} className="hover:text-teal-700">{product.name}</Link>
                     </td>
                     <td className="px-4 py-3 text-ink-soft">{product.brand?.name ?? '—'}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-ink-soft">{product.sku ?? '—'}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{product.selling_price ? `${product.selling_price} ${product.currency}` : '—'}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{product.break_even_cpa ?? '—'}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{product.cogs ?? '—'}</td>
@@ -114,11 +116,12 @@ export function Products() {
 function AddProductModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const { data: brands = [] } = useQuery({ queryKey: ['brands'], queryFn: listBrands, enabled: open })
-  const [form, setForm] = useState({ name: '', brand_id: '', selling_price: '', break_even_cpa: '', cogs: '', status: 'research' as ProductStatus, main_url: '' })
+  const [form, setForm] = useState({ name: '', sku: '', brand_id: '', selling_price: '', break_even_cpa: '', cogs: '', status: 'research' as ProductStatus, main_url: '' })
 
   const save = useMutation({
     mutationFn: () => saveProduct({
       name: form.name,
+      sku: form.sku.trim() || null,
       brand_id: form.brand_id || null,
       selling_price: form.selling_price ? Number(form.selling_price) : null,
       break_even_cpa: form.break_even_cpa ? Number(form.break_even_cpa) : null,
@@ -137,15 +140,18 @@ function AddProductModal({ open, onClose }: { open: boolean; onClose: () => void
         <button className="btn-primary" disabled={!form.name || save.isPending} onClick={() => save.mutate()}>Додај производ</button>
       </div>}>
       <div className="space-y-3">
-        <input className="field" placeholder="Име на производ" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+        <div className="grid grid-cols-1 sm:grid-cols-[1.5fr_1fr] gap-3">
+          <input className="field" placeholder="Име на производ" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+          <input className="field" placeholder="SKU" value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} />
+        </div>
         <select className="field" value={form.brand_id} onChange={(event) => setForm({ ...form, brand_id: event.target.value })}>
           <option value="">Без бренд</option>
           {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
         </select>
         <div className="grid grid-cols-3 gap-3">
-          <input className="field" placeholder="Цена" inputMode="decimal" value={form.selling_price} onChange={(event) => setForm({ ...form, selling_price: event.target.value })} />
+          <input className="field" placeholder="Продажна" inputMode="decimal" value={form.selling_price} onChange={(event) => setForm({ ...form, selling_price: event.target.value })} />
           <input className="field" placeholder="Break-even CPA" inputMode="decimal" value={form.break_even_cpa} onChange={(event) => setForm({ ...form, break_even_cpa: event.target.value })} />
-          <input className="field" placeholder="COGS" inputMode="decimal" value={form.cogs} onChange={(event) => setForm({ ...form, cogs: event.target.value })} />
+          <input className="field" placeholder="Набавна (COGS)" inputMode="decimal" value={form.cogs} onChange={(event) => setForm({ ...form, cogs: event.target.value })} />
         </div>
         <input className="field" placeholder="Главен линк на производот" value={form.main_url} onChange={(event) => setForm({ ...form, main_url: event.target.value })} />
         <select className="field" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as ProductStatus })}>

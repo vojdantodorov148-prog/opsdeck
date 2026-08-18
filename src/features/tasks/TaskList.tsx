@@ -27,7 +27,7 @@ export function TaskList({ tasks, onOpen }: { tasks: TaskWithRelations[]; onOpen
                   <p className="mt-1 text-[11px] text-ink-soft text-right tabular-nums">{done}/{total}</p>
                 </div>
               )}
-              {t.due_date && <span className="hidden lg:block text-xs text-ink-soft shrink-0 w-20">Рок {t.due_date.slice(5)}</span>}
+              {t.due_date && <span className="hidden lg:block text-xs text-ink-soft shrink-0 w-32">Рок {formatDue(t.due_date, t.due_time)}</span>}
               {t.assignee && <Avatar name={t.assignee.full_name} url={t.assignee.avatar_url} size={26} />}
               <Badge className={TASK_STATUS[t.status].className}>{TASK_STATUS[t.status].label}</Badge>
             </button>
@@ -59,4 +59,9 @@ export function TaskList({ tasks, onOpen }: { tasks: TaskWithRelations[]; onOpen
       })}
     </ul>
   )
+}
+
+function formatDue(date: string, time?: string | null) {
+  const [year, month, day] = date.split('-')
+  return `${day}.${month}.${year}${time ? ` ${time.slice(0, 5)}` : ''}`
 }
