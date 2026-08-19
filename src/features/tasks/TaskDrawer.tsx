@@ -9,13 +9,15 @@ import { DELIVERABLE_LABELS, progressOf } from '@/lib/deliverables'
 import { DEPARTMENT, TASK_STATUS } from '@/lib/status'
 import {
   addComment, completeTask, getTask, listComments, setDeliverableProgress,
-  setDeliverableUrl, setTaskStatus,
+  setDeliverableUrl, setTaskStatus, updateTask,
 } from '@/services/tasks'
-import { useUserId } from '@/features/auth/session'
+import { useSession, useUserId } from '@/features/auth/session'
+import { listProfiles } from '@/services/reference'
 
 export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose: () => void }) {
   const qc = useQueryClient()
   const userId = useUserId()
+  const { can } = useSession()
   const [comment, setComment] = useState('')
 
   const { data: task } = useQuery({
@@ -27,6 +29,11 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
     queryKey: ['comments', taskId],
     queryFn: () => listComments(taskId as string),
     enabled: Boolean(taskId),
+  })
+  const { data: people = [] } = useQuery({
+    queryKey: ['profiles'],
+    queryFn: listProfiles,
+    enabled: Boolean(taskId) && can('tasks.assign'),
   })
 
   function refresh() {
@@ -53,11 +60,19 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
     mutationFn: () => addComment(taskId as string, userId, comment),
     onSuccess: () => { setComment(''); qc.invalidateQueries({ queryKey: ['comments', taskId] }) },
   })
+  const assignMut = useMutation({
+    mutationFn: (assignedTo: string | null) => updateTask(taskId as string, { assigned_to: assignedTo }),
+    onSuccess: () => { refresh(); toast.success('Извршителот е ажуриран') },
+    onError: (e: Error) => toast.error(e.message),
+  })
 
   if (!taskId || !task) return <Drawer open={Boolean(taskId)} onClose={onClose} title="Се вчитува…"><div /></Drawer>
 
   const isPersonal = task.source === 'personal'
   const { total, done, pct } = progressOf(task.deliverables ?? [])
+  const canAssign = can('tasks.assign')
+  const isAssignee = Boolean(userId && task.assigned_to === userId)
+  const canWork = isAssignee || canAssign
 
   return (
     <Drawer
@@ -73,10 +88,10 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
       footer={
         <div className="flex flex-wrap items-center gap-2">
           {task.status === 'done' ? (
-            <button className="btn-quiet" onClick={() => statusMut.mutate('doing')}>Отвори повторно</button>
+            canWork ? <button className="btn-quiet" onClick={() => statusMut.mutate('doing')}>Отвори повторно</button> : null
           ) : isPersonal ? (
-            <button className="btn-primary" onClick={() => statusMut.mutate('done')}>Заврши</button>
-          ) : (
+            isAssignee ? <button className="btn-primary" onClick={() => statusMut.mutate('done')}>Заврши</button> : null
+          ) : canWork && task.assigned_to ? (
             <>
               <button className="btn-primary" disabled={completeMut.isPending} onClick={() => completeMut.mutate()}>
                 {completeMut.isPending ? 'Се завршува…' : 'Завршено'}
@@ -85,6 +100,10 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
                 {task.status === 'blocked' ? 'Одблокирај' : 'Блокирај'}
               </button>
             </>
+          ) : task.assigned_to ? (
+            <span className="text-xs text-ink-soft">Само доделениот член може да ја заврши задачата.</span>
+          ) : (
+            <span className="text-xs text-amber-700">Задачата нема извршител. Додели ја на член пред да се заврши.</span>
           )}
         </div>
       }
@@ -101,6 +120,22 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
           {task.due_date && <span className="text-sm text-ink-soft">Рок {formatDue(task.due_date, task.due_time)}</span>}
         </div>
 
+        {canAssign && !isPersonal && (
+          <div className="rounded-2xl border border-line bg-panel/60 p-3">
+            <label className="block text-[11px] font-semibold uppercase tracking-wide text-ink-soft mb-1.5">Доделено на</label>
+            <select
+              className="field h-10"
+              value={task.assigned_to ?? ''}
+              disabled={assignMut.isPending}
+              onChange={(e) => assignMut.mutate(e.target.value || null)}
+            >
+              <option value="">Недоделена задача</option>
+              {people.map((person) => <option key={person.id} value={person.id}>{person.full_name}</option>)}
+            </select>
+            {!task.assigned_to && <p className="mt-1.5 text-xs text-amber-700">Оваа задача нема извршител. Избери член за да може тој да ја означи како завршена.</p>}
+          </div>
+        )}
+
         {task.description && <p className="text-sm text-ink-soft whitespace-pre-wrap">{task.description}</p>}
 
         {total > 0 && (
@@ -116,19 +151,23 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
                   <div className="flex items-center gap-3">
                     <span className="flex-1 text-sm">{DELIVERABLE_LABELS[d.type]}</span>
                     <div className="flex items-center gap-1">
-                      <button
-                        className="btn-ghost h-8 w-8 px-0" aria-label="Намали завршена количина"
-                        onClick={() => progressMut.mutate({ id: d.id, value: Math.max(0, d.completed_quantity - 1) })}
-                      ><Minus size={14} /></button>
+                      {canWork && (
+                        <button
+                          className="btn-ghost h-8 w-8 px-0" aria-label="Намали завршена количина"
+                          onClick={() => progressMut.mutate({ id: d.id, value: Math.max(0, d.completed_quantity - 1) })}
+                        ><Minus size={14} /></button>
+                      )}
                       <span className="w-12 text-center text-sm tabular-nums">{d.completed_quantity}/{d.quantity}</span>
-                      <button
-                        className="btn-ghost h-8 w-8 px-0" aria-label="Зголеми завршена количина"
-                        onClick={() => progressMut.mutate({ id: d.id, value: Math.min(d.quantity, d.completed_quantity + 1) })}
-                      ><Plus size={14} /></button>
+                      {canWork && (
+                        <button
+                          className="btn-ghost h-8 w-8 px-0" aria-label="Зголеми завршена количина"
+                          onClick={() => progressMut.mutate({ id: d.id, value: Math.min(d.quantity, d.completed_quantity + 1) })}
+                        ><Plus size={14} /></button>
+                      )}
                     </div>
                     {d.completed_quantity >= d.quantity && <Check size={15} className="text-teal-600" />}
                   </div>
-                  <DeliverableLink deliverableId={d.id} initialUrl={d.url} onSaved={refresh} />
+                  <DeliverableLink deliverableId={d.id} initialUrl={d.url} onSaved={refresh} editable={canWork} />
                 </li>
               ))}
             </ul>
@@ -184,7 +223,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
 }
 
 
-function DeliverableLink({ deliverableId, initialUrl, onSaved }: { deliverableId: string; initialUrl: string | null; onSaved: () => void }) {
+function DeliverableLink({ deliverableId, initialUrl, onSaved, editable }: { deliverableId: string; initialUrl: string | null; onSaved: () => void; editable: boolean }) {
   const [url, setUrl] = useState(initialUrl ?? '')
   const save = useMutation({
     mutationFn: () => setDeliverableUrl(deliverableId, url),
@@ -194,17 +233,23 @@ function DeliverableLink({ deliverableId, initialUrl, onSaved }: { deliverableId
 
   return (
     <div className="mt-2 flex items-center gap-2">
-      <div className="relative min-w-0 flex-1">
-        <Link2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
-        <input
-          className="field h-9 pl-8 pr-3 text-xs"
-          placeholder="Залепи линк до готовиот фајл"
-          value={url}
-          onChange={(event) => setUrl(event.target.value)}
-          onKeyDown={(event) => { if (event.key === 'Enter') save.mutate() }}
-        />
-      </div>
-      <button className="btn-quiet h-9 px-3" onClick={() => save.mutate()} disabled={save.isPending} aria-label="Зачувај линк"><Save size={14} /></button>
+      {editable ? (
+        <>
+          <div className="relative min-w-0 flex-1">
+            <Link2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
+            <input
+              className="field h-9 pl-8 pr-3 text-xs"
+              placeholder="Залепи линк до готовиот фајл"
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter') save.mutate() }}
+            />
+          </div>
+          <button className="btn-quiet h-9 px-3" onClick={() => save.mutate()} disabled={save.isPending} aria-label="Зачувај линк"><Save size={14} /></button>
+        </>
+      ) : (
+        <div className="min-w-0 flex-1 text-xs text-ink-soft">{url.trim() ? 'Готовиот линк е достапен за отворање.' : 'Нема додаден готов линк.'}</div>
+      )}
       {url.trim() && (
         <a href={/^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`} target="_blank" rel="noopener noreferrer" className="btn-primary h-9 px-3 text-xs">
           <ExternalLink size={14} /> Отвори
