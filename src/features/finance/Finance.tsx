@@ -232,8 +232,9 @@ function AccountModal({ open, account, onClose }: { open: boolean; account: Fina
   }, [account, open])
 
   const save = useMutation({
-    mutationFn: () => account
-      ? updateFinanceAccount({
+    mutationFn: async (): Promise<void> => {
+      if (account) {
+        await updateFinanceAccount({
           id: account.id,
           name: form.name.trim(),
           amount: Number(form.amount),
@@ -241,12 +242,16 @@ function AccountModal({ open, account, onClose }: { open: boolean; account: Fina
           notes: form.notes.trim() || null,
           logNote: form.logNote.trim() || null,
         })
-      : createFinanceAccount({
-          name: form.name.trim(),
-          amount: Number(form.amount),
-          currency: form.currency.trim().toUpperCase(),
-          notes: form.notes.trim() || null,
-        }),
+        return
+      }
+
+      await createFinanceAccount({
+        name: form.name.trim(),
+        amount: Number(form.amount),
+        currency: form.currency.trim().toUpperCase(),
+        notes: form.notes.trim() || null,
+      })
+    },
     onSuccess: () => {
       invalidateFinance(qc)
       toast.success(account ? 'Сметката е ажурирана' : 'Сметката е додадена')
