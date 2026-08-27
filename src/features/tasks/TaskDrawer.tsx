@@ -120,6 +120,20 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
           {task.due_date && <span className="text-sm text-ink-soft">Рок {formatDue(task.due_date, task.due_time)}</span>}
         </div>
 
+        {!isPersonal && (
+          <div className={`rounded-2xl border p-3.5 ${task.market ? 'border-teal-200 bg-teal-50/70' : 'border-amber-200 bg-amber-50/60'}`}>
+            <p className={`text-[11px] font-semibold uppercase tracking-wide ${task.market ? 'text-teal-700' : 'text-amber-700'}`}>Пазар / држава</p>
+            {task.market ? (
+              <div className="mt-1 flex flex-wrap items-baseline gap-2">
+                <span className="text-lg font-semibold text-ink">{task.market.code}</span>
+                <span className="text-sm font-medium text-ink">{task.market.name}</span>
+              </div>
+            ) : (
+              <p className="mt-1 text-sm font-medium text-amber-800">Нема избран пазар за оваа задача</p>
+            )}
+          </div>
+        )}
+
         {canAssign && !isPersonal && (
           <div className="rounded-2xl border border-line bg-panel/60 p-3">
             <label className="block text-[11px] font-semibold uppercase tracking-wide text-ink-soft mb-1.5">Доделено на</label>

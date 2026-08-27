@@ -122,7 +122,7 @@ export function GiveTaskModal() {
           )}
         </Field>
 
-        <Field label="Пазари" optional>
+        <Field label="Пазари / држави" optional>
           <div className="rounded-2xl border border-line bg-panel/50 p-2.5">
             <div className="flex flex-wrap gap-2">
               {markets.map((market) => {

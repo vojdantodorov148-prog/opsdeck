@@ -94,7 +94,8 @@ export function Home() {
                 <li key={task.id}>
                   <button className="w-full flex items-center gap-2.5 py-2 px-1 rounded-lg row-hover text-left" onClick={() => setOpenTask(task.id)}>
                     <span className="h-4 w-4 rounded-full border-2 border-line shrink-0" />
-                    <span className="flex-1 text-[13px] truncate">{task.title}</span>
+                    <span className="min-w-0 flex-1 text-[13px] truncate">{task.title}</span>
+                    {task.market && <span className="shrink-0 rounded-md bg-teal-50 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700">{task.market.code}</span>}
                     {task.assignee && <Avatar name={task.assignee.full_name} url={task.assignee.avatar_url} size={22} />}
                     <span className="text-[11px] text-teal-600 tabular-nums w-[42px] text-right">{task.scheduled_time ? task.scheduled_time.slice(0, 5) : ''}</span>
                   </button>

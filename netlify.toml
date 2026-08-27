@@ -17,5 +17,5 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
-[functions."generate-subscriptions"]
+[functions."generate-recurring-finance"]
   schedule = "15 0 * * *"

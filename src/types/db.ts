@@ -225,6 +225,68 @@ export interface CapitalAccount {
   updated_at: string
 }
 
+
+export interface FinanceAccount {
+  id: string
+  name: string
+  amount: number
+  currency: string
+  notes: string | null
+  active: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface FinanceRecurringRule {
+  id: string
+  account_id: string
+  kind: FinanceKind
+  description: string
+  amount: number
+  currency: string
+  cadence: 'weekly' | 'monthly' | 'yearly'
+  next_run_date: string
+  active: boolean
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface FinanceEntry {
+  id: string
+  transaction_date: string
+  kind: FinanceKind
+  description: string
+  amount: number
+  currency: string
+  account_id: string
+  notes: string | null
+  recurring_rule_id: string | null
+  recurrence_date: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  account?: Pick<FinanceAccount, 'id' | 'name' | 'currency'> | null
+  recurring?: Pick<FinanceRecurringRule, 'id' | 'cadence' | 'active' | 'next_run_date'> | null
+}
+
+export interface FinanceAccountLog {
+  id: string
+  account_id: string
+  change_type: 'created' | 'manual' | 'transaction' | 'archived'
+  old_amount: number | null
+  new_amount: number
+  delta: number
+  note: string | null
+  transaction_id: string | null
+  changed_by: string | null
+  changed_at: string
+  account?: Pick<FinanceAccount, 'id' | 'name' | 'currency'> | null
+  actor?: Pick<Profile, 'id' | 'full_name'> | null
+}
+
 export interface BrandDocument {
   id: string
   brand_id: string

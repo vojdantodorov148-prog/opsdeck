@@ -4,10 +4,10 @@ import { supabase } from '@/lib/supabase'
 import { useSession } from '@/features/auth/session'
 
 const TABLE_QUERIES: Record<string, string[][]> = {
-  finance_transactions: [['finance-transactions']],
-  finance_subscriptions: [['finance-subscriptions'], ['finance-transactions']],
-  monthly_revenues: [['monthly-revenue'], ['finance-transactions']],
-  capital_accounts: [['capital-accounts']],
+  finance_accounts: [['finance-accounts'], ['finance-account-logs']],
+  finance_entries: [['finance-entries'], ['finance-accounts'], ['finance-account-logs']],
+  finance_recurring_rules: [['finance-entries']],
+  finance_account_logs: [['finance-account-logs']],
   brand_documents: [['brand-documents']],
 }
 

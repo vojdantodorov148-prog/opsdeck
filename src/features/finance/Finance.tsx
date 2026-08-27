@@ -1,543 +1,436 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Landmark, Plus, RefreshCw, Trash2, TrendingDown, TrendingUp, WalletCards } from 'lucide-react'
+import {
+  ArrowDownLeft, ArrowUpRight, Clock3, History, Landmark,
+  Plus, RefreshCw, Trash2, WalletCards, XCircle,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader, Loading, EmptyState, ErrorNote } from '@/components/ui/Bits'
 import { Modal } from '@/components/ui/Modal'
-import { useSession, useUserId } from '@/features/auth/session'
-import { listBrands } from '@/services/reference'
+import { useSession } from '@/features/auth/session'
 import {
-  deleteCapitalAccount,
-  deleteFinanceTransaction,
-  deleteMonthlyRevenue,
-  deleteSubscription,
-  generateSubscriptions,
-  listCapitalAccounts,
-  listFinanceTransactions,
-  listMonthlyRevenue,
-  listSubscriptions,
-  saveCapitalAccount,
-  saveFinanceTransaction,
-  saveMonthlyRevenue,
-  saveSubscription,
+  archiveFinanceAccount,
+  createFinanceAccount,
+  createFinanceEntry,
+  deleteFinanceEntry,
+  listFinanceAccountLogs,
+  listFinanceAccounts,
+  listFinanceEntries,
+  stopFinanceRecurring,
+  updateFinanceAccount,
 } from '@/services/finance'
-import type { CapitalAccount, FinanceKind, FinanceSubscription } from '@/types/db'
-import { cn } from '@/lib/cn'
+import type { FinanceAccount, FinanceEntry, FinanceKind } from '@/types/db'
 
-const TABS = [
-  { key: 'pl', label: 'P&L' },
-  { key: 'capital', label: 'Капитал' },
-  { key: 'revenue', label: 'Месечни приходи' },
-  { key: 'subscriptions', label: 'Претплати' },
-] as const
-
-type Tab = typeof TABS[number]['key']
-
-function currentMonth() {
-  return new Date().toISOString().slice(0, 7)
+function today() {
+  return new Date().toISOString().slice(0, 10)
 }
 
 function money(amount: number, currency: string) {
   try {
-    return new Intl.NumberFormat('mk-MK', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount)
+    return new Intl.NumberFormat('mk-MK', {
+      style: 'currency', currency, maximumFractionDigits: 2,
+    }).format(amount)
   } catch {
-    return `${amount.toFixed(2)} ${currency}`
+    return `${Number(amount).toFixed(2)} ${currency}`
   }
+}
+
+function niceDate(value: string) {
+  const [year, month, day] = value.slice(0, 10).split('-')
+  return `${day}.${month}.${year}`
+}
+
+function niceDateTime(value: string) {
+  const date = new Date(value)
+  return new Intl.DateTimeFormat('mk-MK', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).format(date)
+}
+
+const CADENCE: Record<string, string> = {
+  weekly: 'Неделно', monthly: 'Месечно', yearly: 'Годишно',
 }
 
 export function Finance() {
   const { can } = useSession()
-  const [tab, setTab] = useState<Tab>('pl')
-  const [month, setMonth] = useState(currentMonth())
+  const canManage = can('finance.manage')
+  const [accountModal, setAccountModal] = useState<FinanceAccount | 'new' | null>(null)
+  const [transactionOpen, setTransactionOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
 
-  return (
-    <div className="max-w-[1100px]">
-      <PageHeader
-        title="Финансии"
-        subtitle="P&L, капитал, месечни приходи и автоматски претплати на едно место."
-      />
+  const accountsQuery = useQuery({ queryKey: ['finance-accounts'], queryFn: listFinanceAccounts })
+  const entriesQuery = useQuery({ queryKey: ['finance-entries'], queryFn: () => listFinanceEntries(200) })
 
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-xl border border-line bg-panel p-1">
-          {TABS.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => setTab(item.key)}
-              className={cn(
-                'h-9 rounded-lg px-3 text-sm transition',
-                tab === item.key ? 'bg-white text-teal-700 shadow-sm font-medium' : 'text-ink-soft hover:text-ink',
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {(tab === 'pl' || tab === 'revenue') && (
-          <label className="flex items-center gap-2 text-sm text-ink-soft">
-            Месец
-            <span className="flex rounded-xl border border-line bg-white px-3 py-2">
-              <input
-                type="month"
-                value={month}
-                onChange={(event) => setMonth(event.target.value)}
-                className="min-w-0 border-0 bg-transparent p-0 text-sm outline-none"
-              />
-            </span>
-          </label>
-        )}
-      </div>
-
-      {tab === 'pl' && <ProfitLoss month={month} canManage={can('finance.manage')} />}
-      {tab === 'capital' && <Capital canManage={can('finance.manage')} />}
-      {tab === 'revenue' && <Revenue month={month} canManage={can('finance.manage')} />}
-      {tab === 'subscriptions' && <Subscriptions canManage={can('finance.manage')} />}
-    </div>
-  )
-}
-
-function ProfitLoss({ month, canManage }: { month: string; canManage: boolean }) {
-  const qc = useQueryClient()
-  const userId = useUserId()
-  const [open, setOpen] = useState(false)
-  const { data: transactions = [], isLoading, error } = useQuery({
-    queryKey: ['finance-transactions', month],
-    queryFn: () => listFinanceTransactions(month),
-  })
-
-  const generate = useMutation({
-    mutationFn: () => generateSubscriptions(month),
-    onSuccess: (count) => {
-      qc.invalidateQueries({ queryKey: ['finance-transactions', month] })
-      if (count > 0) toast.success(`Додадени се ${count} претплатнички трансакции`)
-    },
-    onError: () => undefined,
-  })
-
-  useEffect(() => {
-    if (canManage) generate.mutate()
-    // only once per month change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month, canManage])
-
-  const remove = useMutation({
-    mutationFn: deleteFinanceTransaction,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['finance-transactions', month] }); toast.success('Трансакцијата е избришана') },
-    onError: (e: Error) => toast.error(e.message),
-  })
+  const accounts = accountsQuery.data ?? []
+  const entries = entriesQuery.data ?? []
 
   const totals = useMemo(() => {
-    const grouped = new Map<string, { income: number; expense: number }>()
-    transactions.forEach((row) => {
-      const value = grouped.get(row.currency) ?? { income: 0, expense: 0 }
-      value[row.kind] += Number(row.amount)
-      grouped.set(row.currency, value)
-    })
-    return [...grouped.entries()].map(([currency, value]) => ({ currency, ...value, net: value.income - value.expense }))
-  }, [transactions])
-
-  return (
-    <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-3">
-          {totals.length === 0 ? (
-            <SummaryCard label="Нето резултат" value={money(0, 'EUR')} icon={WalletCards} />
-          ) : totals.map((item) => (
-            <div key={item.currency} className="contents">
-              <SummaryCard label={`Приход · ${item.currency}`} value={money(item.income, item.currency)} icon={TrendingUp} positive />
-              <SummaryCard label={`Трошок · ${item.currency}`} value={money(item.expense, item.currency)} icon={TrendingDown} />
-              <SummaryCard label={`Нето · ${item.currency}`} value={money(item.net, item.currency)} icon={WalletCards} positive={item.net >= 0} />
-            </div>
-          ))}
-        </div>
-        {canManage && (
-          <div className="flex gap-2">
-            <button className="btn-quiet" onClick={() => generate.mutate()} disabled={generate.isPending}>
-              <RefreshCw size={15} /> Освежи претплати
-            </button>
-            <button className="btn-primary" onClick={() => setOpen(true)}><Plus size={15} /> Додај трансакција</button>
-          </div>
-        )}
-      </div>
-
-      {error ? <ErrorNote error={error} /> : isLoading ? <Loading rows={6} /> : transactions.length === 0 ? (
-        <div className="panel"><EmptyState title="Нема трансакции за овој месец" hint="Додајте приход, трошок или претплата." /></div>
-      ) : (
-        <div className="panel overflow-x-auto scrollbar-thin">
-          <table className="w-full min-w-[860px] text-sm">
-            <thead className="border-b border-line text-xs uppercase tracking-wide text-ink-soft">
-              <tr>
-                <th className="px-4 py-3 text-left">Датум</th>
-                <th className="px-4 py-3 text-left">Опис</th>
-                <th className="px-4 py-3 text-left">Категорија</th>
-                <th className="px-4 py-3 text-left">Извор</th>
-                <th className="px-4 py-3 text-right">Износ</th>
-                <th className="w-12 px-3 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {transactions.map((row) => (
-                <tr key={row.id} className="row-hover">
-                  <td className="px-4 py-3 text-ink-soft">{row.transaction_date}</td>
-                  <td className="px-4 py-3 font-medium">{row.description}</td>
-                  <td className="px-4 py-3 text-ink-soft">{row.category}</td>
-                  <td className="px-4 py-3 text-xs text-ink-soft">
-                    {row.source === 'subscription' ? 'Претплата' : row.source === 'monthly_revenue' ? 'Месечен приход' : 'Рачно'}
-                  </td>
-                  <td className={cn('px-4 py-3 text-right font-medium tabular-nums', row.kind === 'income' ? 'text-teal-700' : 'text-[#A0522D]')}>
-                    {row.kind === 'income' ? '+' : '−'}{money(Number(row.amount), row.currency)}
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    {canManage && row.source === 'manual' && (
-                      <button
-                        className="p-1.5 rounded-lg text-ink-soft/45 hover:bg-[#FBEFEA] hover:text-[#A0522D]"
-                        aria-label="Избриши трансакција"
-                        onClick={() => window.confirm('Да ја избришам трансакцијата?') && remove.mutate(row.id)}
-                      ><Trash2 size={15} /></button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <TransactionModal open={open} onClose={() => setOpen(false)} month={month} userId={userId} />
-    </>
-  )
-}
-
-function SummaryCard({ label, value, icon: Icon, positive = false }: {
-  label: string; value: string; icon: typeof WalletCards; positive?: boolean
-}) {
-  return (
-    <div className="panel min-w-[180px] px-4 py-3 flex items-center gap-3">
-      <div className={cn('grid h-9 w-9 place-items-center rounded-xl', positive ? 'bg-teal-50 text-teal-700' : 'bg-[#FBEFEA] text-[#A0522D]')}>
-        <Icon size={17} />
-      </div>
-      <div>
-        <p className="text-xs text-ink-soft">{label}</p>
-        <p className="mt-0.5 text-sm font-semibold tabular-nums">{value}</p>
-      </div>
-    </div>
-  )
-}
-
-function TransactionModal({ open, onClose, month, userId }: { open: boolean; onClose: () => void; month: string; userId: string }) {
-  const qc = useQueryClient()
-  const [form, setForm] = useState({
-    transaction_date: `${month}-01`, kind: 'expense' as FinanceKind, category: '', description: '', amount: '', currency: 'EUR', notes: '',
-  })
-
-  useEffect(() => { setForm((value) => ({ ...value, transaction_date: `${month}-01` })) }, [month])
-
-  const save = useMutation({
-    mutationFn: () => saveFinanceTransaction({
-      transaction_date: form.transaction_date,
-      kind: form.kind,
-      category: form.category.trim(),
-      description: form.description.trim(),
-      amount: Number(form.amount),
-      currency: form.currency.trim().toUpperCase(),
-      notes: form.notes.trim() || null,
-      source: 'manual',
-      created_by: userId,
-    }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['finance-transactions', month] })
-      toast.success('Трансакцијата е додадена')
-      onClose()
-      setForm({ transaction_date: `${month}-01`, kind: 'expense', category: '', description: '', amount: '', currency: 'EUR', notes: '' })
-    },
-    onError: (e: Error) => toast.error(e.message),
-  })
-
-  return (
-    <Modal open={open} onClose={onClose} title="Додај трансакција" footer={<ModalFooter onClose={onClose} onSave={() => save.mutate()} disabled={!form.category || !form.description || Number(form.amount) <= 0 || save.isPending} />}>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-sm text-ink-soft">Тип
-          <select className="field mt-1" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as FinanceKind })}>
-            <option value="income">Приход</option><option value="expense">Трошок</option>
-          </select>
-        </label>
-        <label className="text-sm text-ink-soft">Датум
-          <span className="mt-1 flex w-full rounded-xl border border-line bg-white px-3 py-2">
-            <input type="date" className="block w-full min-w-0 border-0 bg-transparent p-0 text-sm" value={form.transaction_date} onChange={(e) => setForm({ ...form, transaction_date: e.target.value })} />
-          </span>
-        </label>
-        <label className="text-sm text-ink-soft">Опис<input className="field mt-1" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
-        <label className="text-sm text-ink-soft">Категорија<input className="field mt-1" placeholder="Маркетинг, софтвер, плати..." value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></label>
-        <label className="text-sm text-ink-soft">Износ<input className="field mt-1" type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></label>
-        <label className="text-sm text-ink-soft">Валута<input className="field mt-1" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} /></label>
-        <label className="sm:col-span-2 text-sm text-ink-soft">Белешка<textarea className="field mt-1 h-20 py-2" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></label>
-      </div>
-    </Modal>
-  )
-}
-
-function Capital({ canManage }: { canManage: boolean }) {
-  const qc = useQueryClient()
-  const userId = useUserId()
-  const [editing, setEditing] = useState<CapitalAccount | null | 'new'>(null)
-  const { data: accounts = [], isLoading, error } = useQuery({ queryKey: ['capital-accounts'], queryFn: listCapitalAccounts })
-  const remove = useMutation({
-    mutationFn: deleteCapitalAccount,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['capital-accounts'] }); toast.success('Капиталната ставка е избришана') },
-    onError: (e: Error) => toast.error(e.message),
-  })
-  const grouped = useMemo(() => {
-    const totals = new Map<string, number>()
-    accounts.forEach((item) => totals.set(item.currency, (totals.get(item.currency) ?? 0) + Number(item.amount)))
-    return [...totals.entries()]
+    const map = new Map<string, number>()
+    accounts.forEach((account) => map.set(account.currency, (map.get(account.currency) ?? 0) + Number(account.amount)))
+    return [...map.entries()]
   }, [accounts])
 
   return (
-    <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-3">
-          {grouped.length === 0 ? <SummaryCard label="Вкупен капитал" value={money(0, 'EUR')} icon={Landmark} positive />
-            : grouped.map(([currency, total]) => <SummaryCard key={currency} label={`Вкупен капитал · ${currency}`} value={money(total, currency)} icon={Landmark} positive />)}
-        </div>
-        {canManage && <button className="btn-primary" onClick={() => setEditing('new')}><Plus size={15} /> Додај сметка</button>}
-      </div>
+    <div className="max-w-[1120px]">
+      <PageHeader
+        title="Финансии"
+        subtitle="Само две работи: со колку капитал располагаме и кои пари влегле или излегле."
+      />
 
-      {error ? <ErrorNote error={error} /> : isLoading ? <Loading rows={4} /> : accounts.length === 0 ? (
-        <div className="panel"><EmptyState title="Нема внесен капитал" hint="Додајте банка, готовина, PayPal или друга сметка." /></div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {accounts.map((account) => (
-            <div key={account.id} className="panel p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium">{account.name}</p>
-                  <p className="mt-2 text-xl font-semibold tabular-nums">{money(Number(account.amount), account.currency)}</p>
-                  {account.notes && <p className="mt-2 text-xs text-ink-soft line-clamp-2">{account.notes}</p>}
+      <section className="mb-8">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Капитал</h2>
+            <p className="mt-0.5 text-sm text-ink-soft">Салдо по сметка. Секое рачно менување останува во историјата.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="btn-quiet" onClick={() => setHistoryOpen(true)}><History size={15} /> Историја</button>
+            {canManage && <button className="btn-primary" onClick={() => setAccountModal('new')}><Plus size={15} /> Додај сметка</button>}
+          </div>
+        </div>
+
+        {accountsQuery.error ? <ErrorNote error={accountsQuery.error} /> : accountsQuery.isLoading ? <Loading rows={3} /> : (
+          <>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {totals.length === 0 ? (
+                <div className="rounded-xl border border-line bg-panel px-4 py-2 text-sm text-ink-soft">Вкупно: 0 EUR</div>
+              ) : totals.map(([currency, total]) => (
+                <div key={currency} className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-2 text-sm">
+                  <span className="text-teal-700">Вкупно · {currency}</span>{' '}
+                  <strong className="ml-1 tabular-nums text-ink">{money(total, currency)}</strong>
                 </div>
-                {canManage && (
-                  <div className="flex gap-1">
-                    <button className="btn-ghost h-8 px-2" onClick={() => setEditing(account)}>Измени</button>
-                    <button className="p-1.5 rounded-lg text-ink-soft/45 hover:bg-[#FBEFEA] hover:text-[#A0522D]" onClick={() => window.confirm('Да ја избришам сметката?') && remove.mutate(account.id)}><Trash2 size={15} /></button>
-                  </div>
-                )}
-              </div>
+              ))}
             </div>
-          ))}
+
+            {accounts.length === 0 ? (
+              <div className="panel"><EmptyState title="Нема активни сметки" hint="Додај Кеш, ProCredit, Mercury или друга сметка." /></div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {accounts.map((account) => (
+                  <article key={account.id} className="panel p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="mb-3 grid h-9 w-9 place-items-center rounded-xl bg-teal-50 text-teal-700"><Landmark size={18} /></div>
+                        <p className="truncate text-sm font-semibold">{account.name}</p>
+                        <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">{money(Number(account.amount), account.currency)}</p>
+                        {account.notes && <p className="mt-2 text-xs text-ink-soft line-clamp-2">{account.notes}</p>}
+                      </div>
+                      {canManage && <button className="btn-quiet h-8 px-2.5 text-xs" onClick={() => setAccountModal(account)}>Измени</button>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Трансакции</h2>
+            <p className="mt-0.5 text-sm text-ink-soft">Приход или трошок. Салдото на избраната сметка се менува автоматски.</p>
+          </div>
+          {canManage && <button className="btn-primary" onClick={() => setTransactionOpen(true)}><Plus size={15} /> Додај трансакција</button>}
         </div>
-      )}
-      <CapitalModal open={editing !== null} account={editing === 'new' ? null : editing} userId={userId} onClose={() => setEditing(null)} />
-    </>
+
+        {entriesQuery.error ? <ErrorNote error={entriesQuery.error} /> : entriesQuery.isLoading ? <Loading rows={6} /> : entries.length === 0 ? (
+          <div className="panel"><EmptyState title="Нема трансакции" hint="Додај го првиот приход или трошок." /></div>
+        ) : (
+          <div className="panel overflow-hidden">
+            <div className="hidden md:grid grid-cols-[110px_1fr_170px_150px_120px] gap-3 border-b border-line px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+              <span>Датум</span><span>Трансакција</span><span>Сметка</span><span className="text-right">Износ</span><span className="text-right">Акции</span>
+            </div>
+            <ul className="divide-y divide-line">
+              {entries.map((entry) => <TransactionRow key={entry.id} entry={entry} canManage={canManage} />)}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      <AccountModal
+        open={accountModal !== null}
+        account={accountModal === 'new' ? null : accountModal}
+        onClose={() => setAccountModal(null)}
+      />
+      <TransactionModal open={transactionOpen} accounts={accounts} onClose={() => setTransactionOpen(false)} />
+      <HistoryModal open={historyOpen} onClose={() => setHistoryOpen(false)} />
+    </div>
   )
 }
 
-function CapitalModal({ open, account, userId, onClose }: { open: boolean; account: CapitalAccount | null; userId: string; onClose: () => void }) {
+function TransactionRow({ entry, canManage }: { entry: FinanceEntry; canManage: boolean }) {
   const qc = useQueryClient()
-  const [form, setForm] = useState({ name: '', amount: '', currency: 'EUR', notes: '' })
-  useEffect(() => {
-    setForm(account ? { name: account.name, amount: String(account.amount), currency: account.currency, notes: account.notes ?? '' } : { name: '', amount: '', currency: 'EUR', notes: '' })
-  }, [account, open])
-  const save = useMutation({
-    mutationFn: () => saveCapitalAccount({
-      id: account?.id,
-      name: form.name.trim(), amount: Number(form.amount), currency: form.currency.trim().toUpperCase(), notes: form.notes.trim() || null, updated_by: userId,
-    }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['capital-accounts'] }); toast.success('Капиталот е зачуван'); onClose() },
-    onError: (e: Error) => toast.error(e.message),
-  })
-  return (
-    <Modal open={open} onClose={onClose} title={account ? 'Измени капитал' : 'Додај капитал'} footer={<ModalFooter onClose={onClose} onSave={() => save.mutate()} disabled={!form.name || !form.amount || save.isPending} />}>
-      <div className="space-y-3">
-        <label className="text-sm text-ink-soft">Име на сметка<input className="field mt-1" placeholder="Банка, готовина, PayPal..." value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm text-ink-soft">Износ<input className="field mt-1" type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></label>
-          <label className="text-sm text-ink-soft">Валута<input className="field mt-1" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} /></label>
-        </div>
-        <label className="text-sm text-ink-soft">Белешка<textarea className="field mt-1 h-20 py-2" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></label>
-      </div>
-    </Modal>
-  )
-}
-
-function Revenue({ month, canManage }: { month: string; canManage: boolean }) {
-  const qc = useQueryClient()
-  const userId = useUserId()
-  const [open, setOpen] = useState(false)
-  const { data: entries = [], isLoading, error } = useQuery({ queryKey: ['monthly-revenue', month], queryFn: () => listMonthlyRevenue(month) })
   const remove = useMutation({
-    mutationFn: deleteMonthlyRevenue,
+    mutationFn: () => deleteFinanceEntry(entry.id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['monthly-revenue', month] })
-      qc.invalidateQueries({ queryKey: ['finance-transactions', month] })
-      toast.success('Приходот е избришан')
+      invalidateFinance(qc)
+      toast.success('Трансакцијата е избришана и салдото е вратено')
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (error: Error) => toast.error(error.message),
   })
-  const totals = useMemo(() => {
-    const map = new Map<string, number>()
-    entries.forEach((item) => map.set(item.currency, (map.get(item.currency) ?? 0) + Number(item.amount)))
-    return [...map.entries()]
-  }, [entries])
+  const stop = useMutation({
+    mutationFn: () => stopFinanceRecurring(entry.recurring_rule_id as string),
+    onSuccess: () => {
+      invalidateFinance(qc)
+      toast.success('Повторувањето е стопирано')
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
 
+  const income = entry.kind === 'income'
   return (
-    <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-3">
-          {totals.length === 0 ? <SummaryCard label="Месечен приход" value={money(0, 'EUR')} icon={TrendingUp} positive />
-            : totals.map(([currency, total]) => <SummaryCard key={currency} label={`Месечен приход · ${currency}`} value={money(total, currency)} icon={TrendingUp} positive />)}
+    <li className="grid gap-2 px-4 py-3.5 row-hover md:grid-cols-[110px_1fr_170px_150px_120px] md:items-center md:gap-3">
+      <span className="text-xs text-ink-soft tabular-nums">{niceDate(entry.transaction_date)}</span>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`grid h-6 w-6 place-items-center rounded-lg ${income ? 'bg-teal-50 text-teal-700' : 'bg-[#FBEFEA] text-[#A0522D]'}`}>
+            {income ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}
+          </span>
+          <p className="min-w-0 truncate text-sm font-medium">{entry.description}</p>
+          {entry.recurring_rule_id && (
+            <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] ${entry.recurring?.active ? 'border-teal-100 bg-teal-50 text-teal-700' : 'border-line bg-panel text-ink-soft'}`}>
+              <RefreshCw size={10} /> {entry.recurring?.active ? (CADENCE[entry.recurring.cadence] ?? 'Повторливо') : 'Стопирано'}
+            </span>
+          )}
         </div>
-        {canManage && <button className="btn-primary" onClick={() => setOpen(true)}><Plus size={15} /> Додај приход</button>}
+        {entry.notes && <p className="mt-1 truncate pl-8 text-xs text-ink-soft">{entry.notes}</p>}
       </div>
-
-      {error ? <ErrorNote error={error} /> : isLoading ? <Loading rows={5} /> : entries.length === 0 ? (
-        <div className="panel"><EmptyState title="Нема внесени приходи" hint="Внесете од каде дошол приходот и колку е за овој месец." /></div>
-      ) : (
-        <div className="panel overflow-hidden">
-          <ul className="divide-y divide-line">
-            {entries.map((entry) => (
-              <li key={entry.id} className="flex items-center gap-4 px-4 py-3 row-hover">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{entry.source}</p>
-                  <p className="text-xs text-ink-soft">{entry.brand?.name ?? 'Сите брендови'}{entry.notes ? ` · ${entry.notes}` : ''}</p>
-                </div>
-                <span className="font-medium text-teal-700 tabular-nums">{money(Number(entry.amount), entry.currency)}</span>
-                {canManage && <button className="p-1.5 rounded-lg text-ink-soft/45 hover:bg-[#FBEFEA] hover:text-[#A0522D]" onClick={() => window.confirm('Да го избришам приходот?') && remove.mutate(entry.id)}><Trash2 size={15} /></button>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <RevenueModal open={open} onClose={() => setOpen(false)} month={month} userId={userId} />
-    </>
+      <div className="flex items-center gap-2 text-sm"><WalletCards size={14} className="text-ink-soft" /> {entry.account?.name ?? 'Сметка'}</div>
+      <span className={`text-right text-sm font-semibold tabular-nums ${income ? 'text-teal-700' : 'text-[#A0522D]'}`}>
+        {income ? '+' : '−'}{money(Number(entry.amount), entry.currency)}
+      </span>
+      <div className="flex justify-end gap-1">
+        {canManage && entry.recurring_rule_id && entry.recurring?.active && (
+          <button className="btn-ghost h-8 w-8 px-0" title="Стопирај повторување" onClick={() => stop.mutate()} disabled={stop.isPending}><XCircle size={15} /></button>
+        )}
+        {canManage && (
+          <button
+            className="btn-ghost h-8 w-8 px-0 text-ink-soft hover:text-[#A0522D]"
+            title="Избриши трансакција"
+            onClick={() => window.confirm('Да ја избришам трансакцијата? Салдото на сметката автоматски ќе се врати.') && remove.mutate()}
+            disabled={remove.isPending}
+          ><Trash2 size={15} /></button>
+        )}
+      </div>
+    </li>
   )
 }
 
-function RevenueModal({ open, onClose, month, userId }: { open: boolean; onClose: () => void; month: string; userId: string }) {
+function AccountModal({ open, account, onClose }: { open: boolean; account: FinanceAccount | null; onClose: () => void }) {
   const qc = useQueryClient()
-  const { data: brands = [] } = useQuery({ queryKey: ['brands'], queryFn: listBrands, enabled: open })
-  const [form, setForm] = useState({ source: '', amount: '', currency: 'EUR', brand_id: '', notes: '' })
+  const [form, setForm] = useState({ name: '', amount: '0', currency: 'EUR', notes: '', logNote: '' })
+
+  useEffect(() => {
+    setForm(account ? {
+      name: account.name,
+      amount: String(account.amount),
+      currency: account.currency,
+      notes: account.notes ?? '',
+      logNote: '',
+    } : { name: '', amount: '0', currency: 'EUR', notes: '', logNote: '' })
+  }, [account, open])
+
   const save = useMutation({
-    mutationFn: () => saveMonthlyRevenue({
-      month: `${month}-01`, source: form.source.trim(), amount: Number(form.amount), currency: form.currency.trim().toUpperCase(), brand_id: form.brand_id || null, notes: form.notes.trim() || null, created_by: userId,
-    }),
+    mutationFn: () => account
+      ? updateFinanceAccount({
+          id: account.id,
+          name: form.name.trim(),
+          amount: Number(form.amount),
+          currency: form.currency.trim().toUpperCase(),
+          notes: form.notes.trim() || null,
+          logNote: form.logNote.trim() || null,
+        })
+      : createFinanceAccount({
+          name: form.name.trim(),
+          amount: Number(form.amount),
+          currency: form.currency.trim().toUpperCase(),
+          notes: form.notes.trim() || null,
+        }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['monthly-revenue', month] })
-      qc.invalidateQueries({ queryKey: ['finance-transactions', month] })
-      toast.success('Месечниот приход е зачуван')
-      setForm({ source: '', amount: '', currency: 'EUR', brand_id: '', notes: '' })
+      invalidateFinance(qc)
+      toast.success(account ? 'Сметката е ажурирана' : 'Сметката е додадена')
       onClose()
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (error: Error) => toast.error(error.message),
   })
+
+  const archive = useMutation({
+    mutationFn: () => archiveFinanceAccount(account?.id as string),
+    onSuccess: () => {
+      invalidateFinance(qc)
+      toast.success('Сметката е тргната')
+      onClose()
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const amountChanged = account ? Number(form.amount) !== Number(account.amount) : false
+
   return (
-    <Modal open={open} onClose={onClose} title="Додај месечен приход" description="Овој внес автоматски се појавува и во P&L табелата." footer={<ModalFooter onClose={onClose} onSave={() => save.mutate()} disabled={!form.source || Number(form.amount) <= 0 || save.isPending} />}>
-      <div className="space-y-3">
-        <label className="text-sm text-ink-soft">Извор<input className="field mt-1" placeholder="Shopify, wholesale, услуга..." value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} /></label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm text-ink-soft">Износ<input className="field mt-1" type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></label>
-          <label className="text-sm text-ink-soft">Валута<input className="field mt-1" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} /></label>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={account ? `Измени · ${account.name}` : 'Додај сметка'}
+      description={account ? 'Кога го менуваш салдото рачно, промената автоматски се запишува во Историја.' : 'Додај банка, кеш или друга сметка.'}
+      footer={
+        <div className="flex items-center justify-between gap-3">
+          <div>{account && <button className="btn-quiet text-[#A0522D]" disabled={archive.isPending} onClick={() => window.confirm('Да ја тргнам оваа сметка? Салдото мора да е 0.') && archive.mutate()}>Тргни сметка</button>}</div>
+          <div className="flex gap-2"><button className="btn-quiet" onClick={onClose}>Откажи</button><button className="btn-primary" disabled={!form.name.trim() || save.isPending} onClick={() => save.mutate()}>{save.isPending ? 'Се зачувува…' : 'Зачувај'}</button></div>
         </div>
-        <label className="text-sm text-ink-soft">Бренд
-          <select className="field mt-1" value={form.brand_id} onChange={(e) => setForm({ ...form, brand_id: e.target.value })}>
-            <option value="">Сите брендови</option>
-            {brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
-          </select>
-        </label>
-        <label className="text-sm text-ink-soft">Белешка<textarea className="field mt-1 h-20 py-2" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></label>
+      }
+    >
+      <div className="space-y-4">
+        <label className="block text-sm text-ink-soft">Име на сметка<input className="field mt-1" placeholder="Кеш, ProCredit, Mercury..." value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
+        <div className="grid grid-cols-[1fr_110px] gap-3">
+          <label className="block text-sm text-ink-soft">Моментално салдо<input className="field mt-1" type="number" step="0.01" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} /></label>
+          <label className="block text-sm text-ink-soft">Валута<input className="field mt-1" value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value })} /></label>
+        </div>
+        {account && amountChanged && (
+          <label className="block text-sm text-ink-soft">Причина за промена <span className="text-xs opacity-70">(опционално)</span><input className="field mt-1" placeholder="Пр. банкарска корекција, преброен кеш..." value={form.logNote} onChange={(event) => setForm({ ...form, logNote: event.target.value })} /></label>
+        )}
+        <label className="block text-sm text-ink-soft">Белешка<textarea className="field mt-1 h-20 py-2" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
       </div>
     </Modal>
   )
 }
 
-function Subscriptions({ canManage }: { canManage: boolean }) {
+function TransactionModal({ open, accounts, onClose }: { open: boolean; accounts: FinanceAccount[]; onClose: () => void }) {
   const qc = useQueryClient()
-  const userId = useUserId()
-  const [editing, setEditing] = useState<FinanceSubscription | null | 'new'>(null)
-  const { data: subscriptions = [], isLoading, error } = useQuery({ queryKey: ['finance-subscriptions'], queryFn: listSubscriptions })
-  const save = useMutation({
-    mutationFn: (input: Partial<FinanceSubscription>) => saveSubscription(input),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['finance-subscriptions'] }); qc.invalidateQueries({ queryKey: ['finance-transactions'] }); toast.success('Претплатата е ажурирана') },
-    onError: (e: Error) => toast.error(e.message),
-  })
-  const remove = useMutation({
-    mutationFn: deleteSubscription,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['finance-subscriptions'] }); qc.invalidateQueries({ queryKey: ['finance-transactions'] }); toast.success('Претплатата е избришана') },
-    onError: (e: Error) => toast.error(e.message),
+  const [form, setForm] = useState({
+    kind: 'expense' as FinanceKind,
+    accountId: '',
+    description: '',
+    amount: '',
+    transactionDate: today(),
+    notes: '',
+    repeat: false,
+    cadence: 'monthly' as 'weekly' | 'monthly' | 'yearly',
   })
 
-  return (
-    <>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-sm text-ink-soft">Активните претплати автоматски создаваат трошок на нивниот ден за наплата.</p>
-        {canManage && <button className="btn-primary" onClick={() => setEditing('new')}><Plus size={15} /> Додај претплата</button>}
-      </div>
-      {error ? <ErrorNote error={error} /> : isLoading ? <Loading rows={5} /> : subscriptions.length === 0 ? (
-        <div className="panel"><EmptyState title="Нема претплати" hint="Додајте софтвер, алатки, хостинг и други месечни трошоци." /></div>
-      ) : (
-        <div className="panel overflow-hidden">
-          <ul className="divide-y divide-line">
-            {subscriptions.map((item) => (
-              <li key={item.id} className="flex flex-wrap items-center gap-4 px-4 py-3 row-hover">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{item.name}</p>
-                    <span className={cn('h-2 w-2 rounded-full', item.active ? 'bg-teal-500' : 'bg-line')} />
-                  </div>
-                  <p className="text-xs text-ink-soft">{item.vendor || item.category} · секој {item.billing_day}. ден</p>
-                </div>
-                <span className="font-medium tabular-nums">{money(Number(item.amount), item.currency)}</span>
-                {canManage && (
-                  <div className="flex items-center gap-1">
-                    <button className="btn-ghost h-8 px-2" onClick={() => setEditing(item)}>Измени</button>
-                    <button className="btn-ghost h-8 px-2" onClick={() => save.mutate({ id: item.id, active: !item.active })}>{item.active ? 'Паузирај' : 'Активирај'}</button>
-                    <button className="p-1.5 rounded-lg text-ink-soft/45 hover:bg-[#FBEFEA] hover:text-[#A0522D]" onClick={() => window.confirm('Да ја избришам претплатата и нејзините автоматски трансакции?') && remove.mutate(item.id)}><Trash2 size={15} /></button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <SubscriptionModal open={editing !== null} item={editing === 'new' ? null : editing} userId={userId} onClose={() => setEditing(null)} />
-    </>
-  )
-}
-
-function SubscriptionModal({ open, item, userId, onClose }: { open: boolean; item: FinanceSubscription | null; userId: string; onClose: () => void }) {
-  const qc = useQueryClient()
-  const [form, setForm] = useState({ name: '', vendor: '', category: 'Софтвер', amount: '', currency: 'EUR', billing_day: '1', starts_on: new Date().toISOString().slice(0, 10), ends_on: '', notes: '' })
   useEffect(() => {
-    setForm(item ? {
-      name: item.name, vendor: item.vendor ?? '', category: item.category, amount: String(item.amount), currency: item.currency,
-      billing_day: String(item.billing_day), starts_on: item.starts_on, ends_on: item.ends_on ?? '', notes: item.notes ?? '',
-    } : { name: '', vendor: '', category: 'Софтвер', amount: '', currency: 'EUR', billing_day: '1', starts_on: new Date().toISOString().slice(0, 10), ends_on: '', notes: '' })
-  }, [item, open])
+    if (!open) return
+    setForm({
+      kind: 'expense', accountId: accounts[0]?.id ?? '', description: '', amount: '', transactionDate: today(), notes: '', repeat: false, cadence: 'monthly',
+    })
+  }, [open, accounts])
+
+  const selected = accounts.find((account) => account.id === form.accountId)
   const save = useMutation({
-    mutationFn: () => saveSubscription({
-      id: item?.id,
-      name: form.name.trim(), vendor: form.vendor.trim() || null, category: form.category.trim(), amount: Number(form.amount),
-      currency: form.currency.trim().toUpperCase(), billing_day: Number(form.billing_day), starts_on: form.starts_on,
-      ends_on: form.ends_on || null, notes: form.notes.trim() || null, active: item?.active ?? true, created_by: item?.created_by ?? userId,
+    mutationFn: () => createFinanceEntry({
+      accountId: form.accountId,
+      kind: form.kind,
+      description: form.description.trim(),
+      amount: Number(form.amount),
+      transactionDate: form.transactionDate,
+      notes: form.notes.trim() || null,
+      repeat: form.repeat,
+      cadence: form.cadence,
     }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['finance-subscriptions'] }); qc.invalidateQueries({ queryKey: ['finance-transactions'] }); toast.success('Претплатата е зачувана'); onClose() },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => {
+      invalidateFinance(qc)
+      toast.success(form.kind === 'income' ? 'Приходот е додаден' : 'Трошокот е додаден')
+      onClose()
+    },
+    onError: (error: Error) => toast.error(error.message),
   })
+
+  const valid = Boolean(form.accountId && form.description.trim() && Number(form.amount) > 0 && form.transactionDate)
+
   return (
-    <Modal open={open} onClose={onClose} title={item ? 'Измени претплата' : 'Додај претплата'} footer={<ModalFooter onClose={onClose} onSave={() => save.mutate()} disabled={!form.name || Number(form.amount) <= 0 || !form.starts_on || save.isPending} />}>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="sm:col-span-2 text-sm text-ink-soft">Име<input className="field mt-1" placeholder="Adobe, Shopify, хостинг..." value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
-        <label className="text-sm text-ink-soft">Добавувач<input className="field mt-1" value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} /></label>
-        <label className="text-sm text-ink-soft">Категорија<input className="field mt-1" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></label>
-        <label className="text-sm text-ink-soft">Износ<input className="field mt-1" type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></label>
-        <label className="text-sm text-ink-soft">Валута<input className="field mt-1" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} /></label>
-        <label className="text-sm text-ink-soft">Ден за наплата<input className="field mt-1" type="number" min="1" max="28" value={form.billing_day} onChange={(e) => setForm({ ...form, billing_day: e.target.value })} /></label>
-        <label className="text-sm text-ink-soft">Почнува од<span className="mt-1 flex w-full rounded-xl border border-line bg-white px-3 py-2"><input type="date" className="block w-full min-w-0 border-0 bg-transparent p-0 text-sm" value={form.starts_on} onChange={(e) => setForm({ ...form, starts_on: e.target.value })} /></span></label>
-        <label className="text-sm text-ink-soft">Завршува (опционално)<span className="mt-1 flex w-full rounded-xl border border-line bg-white px-3 py-2"><input type="date" className="block w-full min-w-0 border-0 bg-transparent p-0 text-sm" value={form.ends_on} onChange={(e) => setForm({ ...form, ends_on: e.target.value })} /></span></label>
-        <label className="sm:col-span-2 text-sm text-ink-soft">Белешка<textarea className="field mt-1 h-20 py-2" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></label>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Додај трансакција"
+      description="Избери приход или трошок и сметката веднаш ќе се ажурира."
+      width="max-w-xl"
+      footer={<div className="flex justify-end gap-2"><button className="btn-quiet" onClick={onClose}>Откажи</button><button className="btn-primary" disabled={!valid || save.isPending} onClick={() => save.mutate()}>{save.isPending ? 'Се додава…' : 'Додај трансакција'}</button></div>}
+    >
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-line bg-panel p-1.5">
+          <button type="button" className={`h-10 rounded-xl text-sm font-medium transition ${form.kind === 'income' ? 'bg-white text-teal-700 shadow-sm' : 'text-ink-soft'}`} onClick={() => setForm({ ...form, kind: 'income' })}><ArrowDownLeft size={15} className="mr-1.5 inline" /> Приход</button>
+          <button type="button" className={`h-10 rounded-xl text-sm font-medium transition ${form.kind === 'expense' ? 'bg-white text-[#A0522D] shadow-sm' : 'text-ink-soft'}`} onClick={() => setForm({ ...form, kind: 'expense' })}><ArrowUpRight size={15} className="mr-1.5 inline" /> Трошок</button>
+        </div>
+
+        <label className="block text-sm text-ink-soft">Сметка
+          <select className="field mt-1" value={form.accountId} onChange={(event) => setForm({ ...form, accountId: event.target.value })}>
+            <option value="">Избери сметка</option>
+            {accounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {money(Number(account.amount), account.currency)}</option>)}
+          </select>
+          {selected && <span className="mt-1 block text-xs text-ink-soft">Трансакцијата ќе го промени салдото на {selected.name}.</span>}
+        </label>
+
+        <label className="block text-sm text-ink-soft">Опис<input className="field mt-1" placeholder="Пр. Shopify исплата, Meta Ads, плата..." value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label>
+
+        <div className="grid grid-cols-[1fr_160px] gap-3">
+          <label className="block text-sm text-ink-soft">Износ<input className="field mt-1" type="number" min="0" step="0.01" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} /></label>
+          <label className="block text-sm text-ink-soft">Датум<input className="field mt-1" type="date" value={form.transactionDate} onChange={(event) => setForm({ ...form, transactionDate: event.target.value })} /></label>
+        </div>
+
+        <div className="rounded-2xl border border-line p-3.5">
+          <label className="flex cursor-pointer items-center justify-between gap-4">
+            <span><span className="block text-sm font-medium">Повторувај ја трансакцијата</span><span className="text-xs text-ink-soft">За subscriptions, плати или друг редовен приход/трошок.</span></span>
+            <input type="checkbox" className="h-4 w-4 accent-teal-600" checked={form.repeat} onChange={(event) => setForm({ ...form, repeat: event.target.checked })} />
+          </label>
+          {form.repeat && (
+            <div className="mt-3 border-t border-line pt-3">
+              <label className="block text-sm text-ink-soft">Колку често
+                <select className="field mt-1" value={form.cadence} onChange={(event) => setForm({ ...form, cadence: event.target.value as typeof form.cadence })}>
+                  <option value="weekly">Секоја недела</option>
+                  <option value="monthly">Секој месец</option>
+                  <option value="yearly">Секоја година</option>
+                </select>
+              </label>
+            </div>
+          )}
+        </div>
+
+        <label className="block text-sm text-ink-soft">Белешка <span className="text-xs opacity-70">(опционално)</span><textarea className="field mt-1 h-20 py-2" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
       </div>
     </Modal>
   )
 }
 
-function ModalFooter({ onClose, onSave, disabled }: { onClose: () => void; onSave: () => void; disabled: boolean }) {
-  return <div className="flex justify-end gap-2"><button className="btn-quiet" onClick={onClose}>Откажи</button><button className="btn-primary" disabled={disabled} onClick={onSave}>Зачувај</button></div>
+function HistoryModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { data: logs = [], isLoading, error } = useQuery({
+    queryKey: ['finance-account-logs'],
+    queryFn: () => listFinanceAccountLogs(60),
+    enabled: open,
+  })
+
+  return (
+    <Modal open={open} onClose={onClose} title="Историја на капитал" description="Секое рачно ажурирање и секоја трансакција што го променила салдото." width="max-w-2xl">
+      {error ? <ErrorNote error={error} /> : isLoading ? <Loading rows={6} /> : logs.length === 0 ? <EmptyState title="Нема промени" /> : (
+        <ul className="divide-y divide-line">
+          {logs.map((log) => {
+            const positive = Number(log.delta) >= 0
+            return (
+              <li key={log.id} className="flex items-start gap-3 py-3 first:pt-0">
+                <span className={`mt-0.5 grid h-8 w-8 place-items-center rounded-xl ${log.change_type === 'manual' ? 'bg-amber-50 text-amber-700' : positive ? 'bg-teal-50 text-teal-700' : 'bg-[#FBEFEA] text-[#A0522D]'}`}>
+                  {log.change_type === 'manual' ? <Clock3 size={15} /> : log.change_type === 'created' ? <Landmark size={15} /> : <RefreshCw size={14} />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-medium">{log.account?.name ?? 'Сметка'}</p>
+                    <span className="text-xs text-ink-soft">{niceDateTime(log.changed_at)}</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-ink-soft">{log.note ?? 'Промена на салдо'}{log.actor?.full_name ? ` · ${log.actor.full_name}` : ''}</p>
+                  <p className="mt-1 text-xs tabular-nums text-ink-soft">
+                    {log.old_amount === null ? 'Почетно салдо' : `${money(Number(log.old_amount), log.account?.currency ?? 'EUR')} → `}
+                    <strong className="text-ink">{money(Number(log.new_amount), log.account?.currency ?? 'EUR')}</strong>
+                  </p>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </Modal>
+  )
+}
+
+function invalidateFinance(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: ['finance-accounts'] })
+  void qc.invalidateQueries({ queryKey: ['finance-entries'] })
+  void qc.invalidateQueries({ queryKey: ['finance-account-logs'] })
 }

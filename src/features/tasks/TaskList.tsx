@@ -19,7 +19,14 @@ export function TaskList({ tasks, onOpen }: { tasks: TaskWithRelations[]; onOpen
             <button className="min-w-0 flex-1 flex items-center gap-4 py-3 text-left" onClick={() => onOpen(t.id)}>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate">{t.title}</p>
-                <p className="text-xs text-ink-soft truncate">{summary || (t.source === 'personal' ? 'Лично' : 'Општа задача')}</p>
+                <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                  {t.market && (
+                    <span className="inline-flex shrink-0 items-center rounded-md border border-teal-100 bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700">
+                      Пазар: {t.market.code} · {t.market.name}
+                    </span>
+                  )}
+                  <span className="min-w-0 truncate text-xs text-ink-soft">{summary || (t.source === 'personal' ? 'Лично' : 'Општа задача')}</span>
+                </div>
               </div>
               {total > 0 && (
                 <div className="hidden md:block w-28 shrink-0">

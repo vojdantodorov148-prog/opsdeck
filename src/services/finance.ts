@@ -1,100 +1,102 @@
 import { supabase } from '@/lib/supabase'
-import type {
-  CapitalAccount, FinanceSubscription, FinanceTransaction, MonthlyRevenue,
-} from '@/types/db'
+import type { FinanceAccount, FinanceAccountLog, FinanceEntry, FinanceKind } from '@/types/db'
 
-function monthBounds(month: string) {
-  const start = `${month}-01`
-  const [year, rawMonth] = month.split('-').map(Number)
-  const end = new Date(Date.UTC(year, rawMonth, 0)).toISOString().slice(0, 10)
-  return { start, end }
-}
-
-export async function listFinanceTransactions(month: string) {
-  const { start, end } = monthBounds(month)
+export async function listFinanceAccounts() {
   const { data, error } = await supabase
-    .from('finance_transactions')
-    .select('*, brand:brands(id,name)')
-    .gte('transaction_date', start)
-    .lte('transaction_date', end)
-    .order('transaction_date', { ascending: false })
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []) as unknown as FinanceTransaction[]
-}
-
-export async function saveFinanceTransaction(input: Partial<FinanceTransaction>) {
-  const { data, error } = await supabase.from('finance_transactions').upsert(input).select().single()
-  if (error) throw error
-  return data as FinanceTransaction
-}
-
-export async function deleteFinanceTransaction(id: string) {
-  const { error } = await supabase.from('finance_transactions').delete().eq('id', id)
-  if (error) throw error
-}
-
-export async function listSubscriptions() {
-  const { data, error } = await supabase
-    .from('finance_subscriptions')
+    .from('finance_accounts')
     .select('*')
-    .order('active', { ascending: false })
+    .eq('active', true)
     .order('name')
   if (error) throw error
-  return (data ?? []) as FinanceSubscription[]
+  return (data ?? []) as FinanceAccount[]
 }
 
-export async function saveSubscription(input: Partial<FinanceSubscription>) {
-  const { data, error } = await supabase.from('finance_subscriptions').upsert(input).select().single()
+export async function createFinanceAccount(input: { name: string; amount: number; currency: string; notes?: string | null }) {
+  const { data, error } = await supabase.rpc('create_finance_account', {
+    p_name: input.name,
+    p_amount: input.amount,
+    p_currency: input.currency,
+    p_notes: input.notes ?? null,
+  })
   if (error) throw error
-  return data as FinanceSubscription
+  return data as string
 }
 
-export async function deleteSubscription(id: string) {
-  const { error } = await supabase.from('finance_subscriptions').delete().eq('id', id)
-  if (error) throw error
-}
-
-export async function generateSubscriptions(month: string) {
-  const { data, error } = await supabase.rpc('generate_subscription_transactions', { p_month: `${month}-01` })
-  if (error) throw error
-  return Number(data ?? 0)
-}
-
-export async function listCapitalAccounts() {
-  const { data, error } = await supabase.from('capital_accounts').select('*').order('name')
-  if (error) throw error
-  return (data ?? []) as CapitalAccount[]
-}
-
-export async function saveCapitalAccount(input: Partial<CapitalAccount>) {
-  const { data, error } = await supabase.from('capital_accounts').upsert(input).select().single()
-  if (error) throw error
-  return data as CapitalAccount
-}
-
-export async function deleteCapitalAccount(id: string) {
-  const { error } = await supabase.from('capital_accounts').delete().eq('id', id)
+export async function updateFinanceAccount(input: {
+  id: string
+  name: string
+  amount: number
+  currency: string
+  notes?: string | null
+  logNote?: string | null
+}) {
+  const { error } = await supabase.rpc('update_finance_account', {
+    p_account_id: input.id,
+    p_name: input.name,
+    p_amount: input.amount,
+    p_currency: input.currency,
+    p_notes: input.notes ?? null,
+    p_log_note: input.logNote ?? null,
+  })
   if (error) throw error
 }
 
-export async function listMonthlyRevenue(month: string) {
+export async function archiveFinanceAccount(id: string) {
+  const { error } = await supabase.rpc('archive_finance_account', { p_account_id: id })
+  if (error) throw error
+}
+
+export async function listFinanceAccountLogs(limit = 40) {
   const { data, error } = await supabase
-    .from('monthly_revenues')
-    .select('*, brand:brands(id,name)')
-    .eq('month', `${month}-01`)
-    .order('source')
+    .from('finance_account_logs')
+    .select('*, account:finance_accounts(id,name,currency), actor:profiles!finance_account_logs_changed_by_fkey(id,full_name)')
+    .order('changed_at', { ascending: false })
+    .limit(limit)
   if (error) throw error
-  return (data ?? []) as unknown as MonthlyRevenue[]
+  return (data ?? []) as unknown as FinanceAccountLog[]
 }
 
-export async function saveMonthlyRevenue(input: Partial<MonthlyRevenue>) {
-  const { data, error } = await supabase.from('monthly_revenues').upsert(input).select().single()
+export async function listFinanceEntries(limit = 200) {
+  const { data, error } = await supabase
+    .from('finance_entries')
+    .select('*, account:finance_accounts(id,name,currency), recurring:finance_recurring_rules(id,cadence,active,next_run_date)')
+    .order('transaction_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit)
   if (error) throw error
-  return data as MonthlyRevenue
+  return (data ?? []) as unknown as FinanceEntry[]
 }
 
-export async function deleteMonthlyRevenue(id: string) {
-  const { error } = await supabase.from('monthly_revenues').delete().eq('id', id)
+export async function createFinanceEntry(input: {
+  accountId: string
+  kind: FinanceKind
+  description: string
+  amount: number
+  transactionDate: string
+  notes?: string | null
+  repeat: boolean
+  cadence: 'weekly' | 'monthly' | 'yearly'
+}) {
+  const { data, error } = await supabase.rpc('create_finance_entry', {
+    p_account_id: input.accountId,
+    p_kind: input.kind,
+    p_description: input.description,
+    p_amount: input.amount,
+    p_transaction_date: input.transactionDate,
+    p_notes: input.notes ?? null,
+    p_repeat: input.repeat,
+    p_cadence: input.cadence,
+  })
+  if (error) throw error
+  return data as string
+}
+
+export async function deleteFinanceEntry(id: string) {
+  const { error } = await supabase.from('finance_entries').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function stopFinanceRecurring(id: string) {
+  const { error } = await supabase.rpc('stop_finance_recurring', { p_rule_id: id })
   if (error) throw error
 }

@@ -192,7 +192,12 @@ function TaskRow({ task, onOpen, onComplete }: { task: TaskWithRelations; onOpen
       <span className="w-14 text-xs text-ink-soft tabular-nums shrink-0">
         {task.scheduled_time ? task.scheduled_time.slice(0, 5) : ''}
       </span>
-      <button className="flex-1 text-left text-sm truncate" onClick={onOpen}>{task.title}</button>
+      <button className="min-w-0 flex-1 text-left text-sm truncate" onClick={onOpen}>{task.title}</button>
+      {task.market && (
+        <span className="shrink-0 rounded-md border border-teal-100 bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700">
+          {task.market.code} · {task.market.name}
+        </span>
+      )}
       <span className="text-xs text-ink-soft shrink-0">{label}</span>
     </div>
   )

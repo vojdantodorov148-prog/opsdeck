@@ -118,8 +118,10 @@ export async function createAssignmentBundle(input: AssignmentBundleInput) {
 
   for (const market of targets) {
     for (const [department, deliverables] of grouped) {
-      const base = [input.productName, market.name].filter(Boolean).join(' — ')
+      const base = input.productName?.trim() || ''
       const fallback = describeDeliverables(deliverables) || 'Задача'
+      // Market is intentionally NOT part of the title. It is a first-class field
+      // rendered separately everywhere, so a long product name can never hide it.
       const title = `${base || fallback}${splitByDepartment ? ` · ${DEPARTMENT_TITLE[department]}` : ''}`
       created.push(await createAssignment({
         title,
