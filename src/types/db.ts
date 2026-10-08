@@ -42,6 +42,29 @@ export interface Product {
   supplier_url: string | null
   assets_url: string | null
   notes: string | null
+  brief: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ProductAngle {
+  id: string
+  product_id: string
+  title: string
+  body: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ProductImage {
+  id: string
+  product_id: string
+  storage_path: string
+  alt_text: string | null
+  sort_order: number
+  created_at: string
+  public_url?: string
 }
 
 export interface ProductMarketTest {
