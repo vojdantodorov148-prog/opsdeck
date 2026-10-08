@@ -168,6 +168,11 @@ export async function setTaskStatus(id: string, status: TaskStatus) {
   return updateTask(id, { status })
 }
 
+export async function deleteTask(id: string) {
+  const { error } = await supabase.from('tasks').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function rescheduleTask(id: string, scheduledDate: string | null) {
   return updateTask(id, { scheduled_date: scheduledDate })
 }

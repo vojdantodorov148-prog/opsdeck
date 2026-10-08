@@ -1,10 +1,11 @@
 import { supabase } from '@/lib/supabase'
-import type { Product, ProductAngle, ProductImage, ProductMarketTest, TestStatus } from '@/types/db'
+import type { Product, ProductAdHeadline, ProductAngle, ProductImage, ProductMarketTest, TestStatus } from '@/types/db'
 
 export type ProductWithRelations = Product & {
   brand: { id: string; name: string; slug: string } | null
   images: ProductImage[]
   angles?: ProductAngle[]
+  headlines?: ProductAdHeadline[]
   links?: { id: string; label: string; url: string }[]
 }
 
@@ -12,6 +13,11 @@ export interface ProductAngleInput {
   id?: string
   title: string
   body: string
+}
+
+export interface ProductHeadlineInput {
+  id?: string
+  headline: string
 }
 
 const PRODUCT_IMAGE_BUCKET = 'product-images'
@@ -41,12 +47,13 @@ export async function listProducts() {
 export async function getProduct(id: string) {
   const { data, error } = await supabase
     .from('products')
-    .select('*, brand:brands(id,name,slug), links:product_links(*), angles:product_angles(*), images:product_images(*)')
+    .select('*, brand:brands(id,name,slug), links:product_links(*), angles:product_angles(*), headlines:product_ad_headlines(*), images:product_images(*)')
     .eq('id', id)
     .single()
   if (error) throw error
   const product = withPublicImageUrls(data as unknown as ProductWithRelations)
   product.angles = [...(product.angles ?? [])].sort((a, b) => a.sort_order - b.sort_order)
+  product.headlines = [...(product.headlines ?? [])].sort((a, b) => a.sort_order - b.sort_order)
   return product
 }
 
@@ -71,6 +78,62 @@ async function replaceAngles(productId: string, angles: ProductAngleInput[]) {
     cleaned.map((angle, index) => ({ product_id: productId, ...angle, sort_order: index })),
   )
   if (error) throw error
+}
+
+function cleanHeadlines(headlines: ProductHeadlineInput[]) {
+  return headlines
+    .map((item) => ({ headline: item.headline.trim() }))
+    .filter((item) => item.headline)
+}
+
+async function replaceHeadlines(productId: string, headlines: ProductHeadlineInput[]) {
+  const { error: deleteError } = await supabase.from('product_ad_headlines').delete().eq('product_id', productId)
+  if (deleteError) throw deleteError
+  const cleaned = cleanHeadlines(headlines)
+  if (!cleaned.length) return
+  const { error } = await supabase.from('product_ad_headlines').insert(
+    cleaned.map((item, index) => ({ product_id: productId, headline: item.headline, sort_order: index })),
+  )
+  if (error) throw error
+}
+
+export async function addProductAngle(productId: string, input: ProductAngleInput) {
+  const title = input.title.trim()
+  const body = input.body.trim()
+  if (!title && !body) throw new Error('Внеси име или опис за новиот агол.')
+  const { data: last } = await supabase
+    .from('product_angles')
+    .select('sort_order')
+    .eq('product_id', productId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const { data, error } = await supabase
+    .from('product_angles')
+    .insert({ product_id: productId, title, body, sort_order: (last?.sort_order ?? -1) + 1 })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as ProductAngle
+}
+
+export async function addProductAdHeadline(productId: string, headline: string) {
+  const value = headline.trim()
+  if (!value) throw new Error('Внеси Ad headline.')
+  const { data: last } = await supabase
+    .from('product_ad_headlines')
+    .select('sort_order')
+    .eq('product_id', productId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const { data, error } = await supabase
+    .from('product_ad_headlines')
+    .insert({ product_id: productId, headline: value, sort_order: (last?.sort_order ?? -1) + 1 })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as ProductAdHeadline
 }
 
 function safeFileName(name: string) {
@@ -116,6 +179,7 @@ async function uploadImages(productId: string, files: File[], startOrder = 0) {
 export async function createProductBundle(args: {
   product: Omit<Partial<Product>, 'id'>
   angles: ProductAngleInput[]
+  headlines: ProductHeadlineInput[]
   images: File[]
 }) {
   if (!args.product.brief?.trim()) throw new Error('Брифот е задолжителен.')
@@ -131,6 +195,7 @@ export async function createProductBundle(args: {
     if (error) throw error
 
     await replaceAngles(productId, args.angles)
+    await replaceHeadlines(productId, args.headlines)
     await uploadImages(productId, args.images, 0)
     return data as Product
   } catch (error) {
@@ -145,6 +210,7 @@ export async function createProductBundle(args: {
 export async function updateProductBundle(args: {
   product: Partial<Product> & { id: string }
   angles: ProductAngleInput[]
+  headlines: ProductHeadlineInput[]
   newImages: File[]
   removeImages: ProductImage[]
   currentImageCount: number
@@ -160,6 +226,7 @@ export async function updateProductBundle(args: {
   if (error) throw error
 
   await replaceAngles(args.product.id, args.angles)
+  await replaceHeadlines(args.product.id, args.headlines)
 
   if (args.removeImages.length) {
     const paths = args.removeImages.map((image) => image.storage_path)

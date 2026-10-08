@@ -1,14 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ExternalLink, Link2, Minus, Plus, Save } from 'lucide-react'
+import { Check, ExternalLink, Link2, Minus, Plus, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Drawer } from '@/components/ui/Drawer'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge, Progress } from '@/components/ui/Bits'
-import { DELIVERABLE_LABELS, progressOf } from '@/lib/deliverables'
+import { DELIVERABLE_LABELS, describeDeliverables, progressOf } from '@/lib/deliverables'
 import { DEPARTMENT, TASK_STATUS } from '@/lib/status'
 import {
-  addComment, completeTask, getTask, listComments, setDeliverableProgress,
+  addComment, completeTask, deleteTask, getTask, listComments, setDeliverableProgress,
   setDeliverableUrl, setTaskStatus, updateTask,
 } from '@/services/tasks'
 import { useSession, useUserId } from '@/features/auth/session'
@@ -19,6 +19,9 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
   const userId = useUserId()
   const { can } = useSession()
   const [comment, setComment] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  useEffect(() => { setConfirmDelete(false) }, [taskId])
 
   const { data: task } = useQuery({
     queryKey: ['task', taskId],
@@ -65,6 +68,18 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
     onSuccess: () => { refresh(); toast.success('Извршителот е ажуриран') },
     onError: (e: Error) => toast.error(e.message),
   })
+  const deleteMut = useMutation({
+    mutationFn: () => deleteTask(taskId as string),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks'] })
+      qc.invalidateQueries({ queryKey: ['my-week'] })
+      qc.invalidateQueries({ queryKey: ['activity'] })
+      toast.success('Задачата е избришана')
+      setConfirmDelete(false)
+      onClose()
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
 
   if (!taskId || !task) return <Drawer open={Boolean(taskId)} onClose={onClose} title="Се вчитува…"><div /></Drawer>
 
@@ -73,6 +88,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
   const canAssign = can('tasks.assign')
   const isAssignee = Boolean(userId && task.assigned_to === userId)
   const canWork = isAssignee || canAssign
+  const canDelete = canAssign || task.created_by === userId
 
   return (
     <Drawer
@@ -82,28 +98,45 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
       subtitle={
         isPersonal
           ? 'Лично'
-          : [task.deliverables?.map((d) => `${d.quantity} ${DELIVERABLE_LABELS[d.type]}`).join(' · '), DEPARTMENT[task.department].label]
+          : [describeDeliverables(task.deliverables ?? []), DEPARTMENT[task.department].label]
               .filter(Boolean).join('  —  ')
       }
       footer={
-        <div className="flex flex-wrap items-center gap-2">
-          {task.status === 'done' ? (
-            canWork ? <button className="btn-quiet" onClick={() => statusMut.mutate('doing')}>Отвори повторно</button> : null
-          ) : isPersonal ? (
-            isAssignee ? <button className="btn-primary" onClick={() => statusMut.mutate('done')}>Заврши</button> : null
-          ) : canWork && task.assigned_to ? (
-            <>
-              <button className="btn-primary" disabled={completeMut.isPending} onClick={() => completeMut.mutate()}>
-                {completeMut.isPending ? 'Се завршува…' : 'Завршено'}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {task.status === 'done' ? (
+              canWork ? <button className="btn-quiet" onClick={() => statusMut.mutate('doing')}>Отвори повторно</button> : null
+            ) : isPersonal ? (
+              isAssignee ? <button className="btn-primary" onClick={() => statusMut.mutate('done')}>Заврши</button> : null
+            ) : canWork && task.assigned_to ? (
+              <>
+                <button className="btn-primary" disabled={completeMut.isPending} onClick={() => completeMut.mutate()}>
+                  {completeMut.isPending ? 'Се завршува…' : 'Завршено'}
+                </button>
+                <button className="btn-quiet" onClick={() => statusMut.mutate(task.status === 'blocked' ? 'doing' : 'blocked')}>
+                  {task.status === 'blocked' ? 'Одблокирај' : 'Блокирај'}
+                </button>
+              </>
+            ) : task.assigned_to ? (
+              <span className="text-xs text-ink-soft">Само доделениот член може да ја заврши задачата.</span>
+            ) : (
+              <span className="text-xs text-amber-700">Задачата нема извршител. Додели ја на член пред да се заврши.</span>
+            )}
+          </div>
+          {canDelete && (
+            confirmDelete ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-red-700">Избриши ја задачата трајно?</span>
+                <button className="btn-quiet h-9" onClick={() => setConfirmDelete(false)}>Не</button>
+                <button className="btn h-9 bg-red-600 text-white hover:bg-red-700" disabled={deleteMut.isPending} onClick={() => deleteMut.mutate()}>
+                  {deleteMut.isPending ? 'Се брише…' : 'Да, избриши'}
+                </button>
+              </div>
+            ) : (
+              <button className="btn-ghost h-9 px-3 text-red-600 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
+                <Trash2 size={14} /> Избриши
               </button>
-              <button className="btn-quiet" onClick={() => statusMut.mutate(task.status === 'blocked' ? 'doing' : 'blocked')}>
-                {task.status === 'blocked' ? 'Одблокирај' : 'Блокирај'}
-              </button>
-            </>
-          ) : task.assigned_to ? (
-            <span className="text-xs text-ink-soft">Само доделениот член може да ја заврши задачата.</span>
-          ) : (
-            <span className="text-xs text-amber-700">Задачата нема извршител. Додели ја на член пред да се заврши.</span>
+            )
           )}
         </div>
       }
@@ -181,6 +214,19 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
                     </div>
                     {d.completed_quantity >= d.quantity && <Check size={15} className="text-teal-600" />}
                   </div>
+                  {(d.angle_title || d.angle_body) && (
+                    <div className="mt-2 rounded-xl border border-violet-100 bg-violet-50/60 px-3 py-2.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-700">Агол</p>
+                      {d.angle_title && <p className="mt-1 text-sm font-medium text-ink">{d.angle_title}</p>}
+                      {d.angle_body && <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-ink-soft">{d.angle_body}</p>}
+                    </div>
+                  )}
+                  {d.ad_headline && (
+                    <div className="mt-2 rounded-xl border border-teal-100 bg-teal-50/60 px-3 py-2.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-700">Ad headline</p>
+                      <p className="mt-1 text-sm font-semibold text-ink">{d.ad_headline}</p>
+                    </div>
+                  )}
                   <DeliverableLink deliverableId={d.id} initialUrl={d.url} onSaved={refresh} editable={canWork} />
                 </li>
               ))}

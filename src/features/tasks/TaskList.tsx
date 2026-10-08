@@ -1,7 +1,7 @@
 import { ExternalLink, Link2 } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge, Progress } from '@/components/ui/Bits'
-import { DELIVERABLE_LABELS, progressOf } from '@/lib/deliverables'
+import { DELIVERABLE_LABELS, describeDeliverables, progressOf } from '@/lib/deliverables'
 import { TASK_STATUS } from '@/lib/status'
 import type { TaskWithRelations } from '@/types/db'
 
@@ -10,9 +10,7 @@ export function TaskList({ tasks, onOpen }: { tasks: TaskWithRelations[]; onOpen
     <ul className="divide-y divide-line">
       {tasks.map((t) => {
         const { total, done, pct } = progressOf(t.deliverables ?? [])
-        const summary = (t.deliverables ?? [])
-          .map((d) => `${d.quantity} × ${DELIVERABLE_LABELS[d.type]}`)
-          .join(' · ')
+        const summary = describeDeliverables(t.deliverables ?? [])
         const links = (t.deliverables ?? []).filter((d) => Boolean(d.url))
         return (
           <li key={t.id} className="flex items-center gap-2 rounded-xl row-hover px-2">

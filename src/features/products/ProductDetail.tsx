@@ -7,8 +7,8 @@ import { Modal } from '@/components/ui/Modal'
 import { TaskList } from '@/features/tasks/TaskList'
 import { TaskDrawer } from '@/features/tasks/TaskDrawer'
 import { TestCellDrawer } from '@/features/testing/TestCellDrawer'
-import { AngleEditor, ImagePicker } from '@/features/products/Products'
-import { deleteProduct, getProduct, listTests, updateProductBundle, type ProductAngleInput, type ProductWithRelations } from '@/services/products'
+import { AngleEditor, HeadlineEditor, ImagePicker } from '@/features/products/Products'
+import { deleteProduct, getProduct, listTests, updateProductBundle, type ProductAngleInput, type ProductHeadlineInput, type ProductWithRelations } from '@/services/products'
 import { listBrands, listMarkets } from '@/services/reference'
 import { listTasks } from '@/services/tasks'
 import { listNotes } from '@/services/signal'
@@ -165,6 +165,22 @@ export function ProductDetail() {
               ) : <p className="mt-3 text-sm text-ink-soft">Нема додадени агли.</p>}
             </section>
 
+            <section className="panel p-5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Ad headline опции</p>
+                <span className="text-xs text-ink-soft">{product.headlines?.length ?? 0}</span>
+              </div>
+              {product.headlines?.length ? (
+                <div className="mt-3 space-y-2">
+                  {product.headlines.map((item, index) => (
+                    <div key={item.id} className="rounded-xl border border-line bg-panel/45 px-4 py-3 text-sm font-medium">
+                      <span className="mr-2 text-xs text-ink-soft">{index + 1}.</span>{item.headline}
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="mt-3 text-sm text-ink-soft">Нема додадени Ad headline опции.</p>}
+            </section>
+
             {product.notes && (
               <section className="panel p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Дополнителни белешки</p>
@@ -249,7 +265,7 @@ export function ProductDetail() {
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         title="Избриши производ"
-        description="Оваа акција е трајна. Сликите, аглите, тестовите, линковите и белешките за производот ќе бидат избришани."
+        description="Оваа акција е трајна. Сликите, аглите, Ad headlines, тестовите, линковите и белешките за производот ќе бидат избришани."
         footer={<div className="flex justify-end gap-2">
           <button className="btn-quiet" onClick={() => setConfirmDelete(false)}>Откажи</button>
           <button className="btn bg-red-600 text-white hover:bg-red-700 disabled:opacity-40" disabled={remove.isPending} onClick={() => remove.mutate()}>
@@ -272,6 +288,7 @@ function EditProductModal({ open, onClose, product }: { open: boolean; onClose: 
     cogs: product.cogs?.toString() ?? '', status: product.status, main_url: product.main_url ?? '', brief: product.brief ?? '',
   }))
   const [angles, setAngles] = useState<ProductAngleInput[]>(() => (product.angles ?? []).map((angle) => ({ id: angle.id, title: angle.title, body: angle.body })))
+  const [headlines, setHeadlines] = useState<ProductHeadlineInput[]>(() => (product.headlines ?? []).map((item) => ({ id: item.id, headline: item.headline })))
   const [newImages, setNewImages] = useState<File[]>([])
   const [removedImages, setRemovedImages] = useState<ProductImage[]>([])
 
@@ -289,6 +306,7 @@ function EditProductModal({ open, onClose, product }: { open: boolean; onClose: 
       brief: product.brief ?? '',
     })
     setAngles((product.angles ?? []).map((angle) => ({ id: angle.id, title: angle.title, body: angle.body })))
+    setHeadlines((product.headlines ?? []).map((item) => ({ id: item.id, headline: item.headline })))
     setNewImages([])
     setRemovedImages([])
   }, [open, product])
@@ -311,6 +329,7 @@ function EditProductModal({ open, onClose, product }: { open: boolean; onClose: 
         brief: form.brief.trim(),
       },
       angles,
+      headlines,
       newImages,
       removeImages: removedImages,
       currentImageCount: product.images.length,
@@ -367,6 +386,7 @@ function EditProductModal({ open, onClose, product }: { open: boolean; onClose: 
         </section>
 
         <AngleEditor angles={angles} onChange={setAngles} />
+        <HeadlineEditor headlines={headlines} onChange={setHeadlines} />
 
         <section className="space-y-3">
           <div>

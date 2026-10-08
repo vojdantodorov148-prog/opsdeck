@@ -57,6 +57,15 @@ export interface ProductAngle {
   updated_at: string
 }
 
+export interface ProductAdHeadline {
+  id: string
+  product_id: string
+  headline: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
 export interface ProductImage {
   id: string
   product_id: string
@@ -92,6 +101,11 @@ export interface Deliverable {
   url: string | null
   notes: string | null
   sort_order: number
+  angle_id: string | null
+  angle_title: string | null
+  angle_body: string | null
+  ad_headline_id: string | null
+  ad_headline: string | null
 }
 
 export interface Task {

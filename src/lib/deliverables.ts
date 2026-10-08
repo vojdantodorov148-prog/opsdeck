@@ -37,7 +37,15 @@ export function departmentFor(type: DeliverableType): Department {
   return 'general'
 }
 
-export interface DeliverableDraft { type: DeliverableType; quantity: number }
+export interface DeliverableDraft {
+  type: DeliverableType
+  quantity: number
+  angle_id?: string | null
+  angle_title?: string | null
+  angle_body?: string | null
+  ad_headline_id?: string | null
+  ad_headline?: string | null
+}
 
 export function routeTask(items: DeliverableDraft[]): Department {
   if (!items.length) return 'general'
@@ -50,9 +58,12 @@ export function routeTask(items: DeliverableDraft[]): Department {
 }
 
 export function describeDeliverables(items: DeliverableDraft[]): string {
-  return items
-    .filter((item) => item.quantity > 0)
-    .map((item) => `${item.quantity} × ${DELIVERABLE_LABELS[item.type]}`)
+  const totals = new Map<DeliverableType, number>()
+  items.filter((item) => item.quantity > 0).forEach((item) => {
+    totals.set(item.type, (totals.get(item.type) ?? 0) + item.quantity)
+  })
+  return [...totals.entries()]
+    .map(([type, quantity]) => `${quantity} × ${DELIVERABLE_LABELS[type]}`)
     .join(' · ')
 }
 

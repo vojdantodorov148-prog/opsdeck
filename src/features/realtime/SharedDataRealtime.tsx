@@ -9,6 +9,9 @@ const TABLE_QUERIES: Record<string, string[][]> = {
   finance_recurring_rules: [['finance-entries']],
   finance_account_logs: [['finance-account-logs']],
   brand_documents: [['brand-documents']],
+  product_angles: [['product']],
+  product_ad_headlines: [['product']],
+  product_images: [['product'], ['products']],
 }
 
 export function SharedDataRealtime() {

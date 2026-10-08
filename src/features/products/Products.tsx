@@ -5,7 +5,7 @@ import { ImageIcon, Plus, Search, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader, Loading, EmptyState, ErrorNote, Badge } from '@/components/ui/Bits'
 import { Modal } from '@/components/ui/Modal'
-import { createProductBundle, deleteProduct, listProducts, type ProductAngleInput, type ProductWithRelations } from '@/services/products'
+import { createProductBundle, deleteProduct, listProducts, type ProductAngleInput, type ProductHeadlineInput, type ProductWithRelations } from '@/services/products'
 import { listBrands } from '@/services/reference'
 import { PRODUCT_STATUS } from '@/lib/status'
 import { useSession } from '@/features/auth/session'
@@ -70,7 +70,7 @@ export function Products() {
     <div className="max-w-[1180px]">
       <PageHeader
         title="Производи"
-        subtitle="Продукт библиотека по бренд — со бриф, агли, слики и клучни бројки."
+        subtitle="Продукт библиотека по бренд — со бриф, агли, Ad headlines, слики и клучни бројки."
         action={can('products.manage') ? <button className="btn-primary" onClick={() => setAdding(true)}>Додај производ</button> : undefined}
       />
 
@@ -171,7 +171,7 @@ export function Products() {
         open={Boolean(deleting)}
         onClose={() => setDeleting(null)}
         title="Избриши производ"
-        description="Ова ќе ги избрише и сликите, аглите, тестовите, линковите и белешките поврзани со производот."
+        description="Ова ќе ги избрише и сликите, аглите, Ad headlines, тестовите, линковите и белешките поврзани со производот."
         footer={<div className="flex justify-end gap-2">
           <button className="btn-quiet" onClick={() => setDeleting(null)}>Откажи</button>
           <button
@@ -199,12 +199,14 @@ function AddProductModal({ open, onClose }: { open: boolean; onClose: () => void
     status: 'research' as ProductStatus, main_url: '', brief: '',
   })
   const [angles, setAngles] = useState<ProductAngleInput[]>([])
+  const [headlines, setHeadlines] = useState<ProductHeadlineInput[]>([])
   const [images, setImages] = useState<File[]>([])
 
   useEffect(() => {
     if (open) return
     setForm({ name: '', sku: '', brand_id: '', selling_price: '', break_even_cpa: '', cogs: '', status: 'research', main_url: '', brief: '' })
     setAngles([])
+    setHeadlines([])
     setImages([])
   }, [open])
 
@@ -222,6 +224,7 @@ function AddProductModal({ open, onClose }: { open: boolean; onClose: () => void
         brief: form.brief.trim(),
       },
       angles,
+      headlines,
       images,
     }),
     onSuccess: () => {
@@ -274,6 +277,7 @@ function AddProductModal({ open, onClose }: { open: boolean; onClose: () => void
         </section>
 
         <AngleEditor angles={angles} onChange={setAngles} />
+        <HeadlineEditor headlines={headlines} onChange={setHeadlines} />
         <ImagePicker files={images} onChange={setImages} />
       </div>
     </Modal>
@@ -310,6 +314,32 @@ export function AngleEditor({ angles, onChange }: { angles: ProductAngleInput[];
         </div>
       ))}
       {!angles.length && <div className="rounded-2xl border border-dashed border-line px-4 py-5 text-sm text-ink-soft">Нема додадени агли.</div>}
+    </section>
+  )
+}
+
+export function HeadlineEditor({ headlines, onChange }: { headlines: ProductHeadlineInput[]; onChange: (headlines: ProductHeadlineInput[]) => void }) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Ad headline опции <span className="normal-case font-normal">(опционално)</span></p>
+          <p className="mt-1 text-xs text-ink-soft">Зачувај headline опции што потоа можат директно да се изберат при доделување статичен оглас.</p>
+        </div>
+        <button className="btn-quiet" type="button" onClick={() => onChange([...headlines, { headline: '' }])}><Plus size={14} /> Додај headline</button>
+      </div>
+      {headlines.map((item, index) => (
+        <div key={index} className="flex items-center gap-2 rounded-2xl border border-line bg-panel/40 p-3">
+          <input
+            className="field flex-1"
+            placeholder={`Ad headline ${index + 1}`}
+            value={item.headline}
+            onChange={(event) => onChange(headlines.map((value, i) => i === index ? { ...value, headline: event.target.value } : value))}
+          />
+          <button className="btn-ghost h-10 w-10 px-0 text-ink-soft hover:text-red-600" type="button" onClick={() => onChange(headlines.filter((_, i) => i !== index))} aria-label="Тргни headline"><X size={16} /></button>
+        </div>
+      ))}
+      {!headlines.length && <div className="rounded-2xl border border-dashed border-line px-4 py-5 text-sm text-ink-soft">Нема додадени Ad headline опции.</div>}
     </section>
   )
 }
