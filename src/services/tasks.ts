@@ -5,11 +5,59 @@ import { departmentFor, describeDeliverables, type DeliverableDraft } from '@/li
 const SELECT = `
   *,
   deliverables:task_deliverables(*),
-  product:products(id,name,main_url),
+  product:products(id,name,main_url,brief,images:product_images(id,storage_path,sort_order)),
   market:markets(id,code,name),
   assignee:profiles!tasks_assigned_to_fkey(id,full_name,avatar_url),
   creator:profiles!tasks_created_by_fkey(id,full_name)
 `
+
+const TASK_REFERENCE_BUCKET = 'task-reference-images'
+const PRODUCT_IMAGE_BUCKET = 'product-images'
+const MAX_REFERENCE_IMAGE_BYTES = 10 * 1024 * 1024
+
+function withTaskImageUrls(task: TaskWithRelations): TaskWithRelations {
+  const product = task.product
+    ? {
+        ...task.product,
+        images: [...(task.product.images ?? [])]
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((image) => ({
+            ...image,
+            public_url: supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(image.storage_path).data.publicUrl,
+          })),
+      }
+    : task.product
+  const reference_image_url = task.reference_image_path
+    ? supabase.storage.from(TASK_REFERENCE_BUCKET).getPublicUrl(task.reference_image_path).data.publicUrl
+    : null
+  return { ...task, product, reference_image_url }
+}
+
+function safeFileName(name: string) {
+  const base = name.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+  return base || 'task-image'
+}
+
+export async function attachTaskReferenceImage(taskIds: string[], file: File) {
+  if (!taskIds.length) return null
+  if (!file.type.startsWith('image/')) throw new Error('Избраниот фајл не е слика.')
+  if (file.size > MAX_REFERENCE_IMAGE_BYTES) throw new Error('Сликата е поголема од 10 MB.')
+
+  const path = `${crypto.randomUUID()}-${safeFileName(file.name)}`
+  const { error: uploadError } = await supabase.storage.from(TASK_REFERENCE_BUCKET).upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+    contentType: file.type || undefined,
+  })
+  if (uploadError) throw uploadError
+
+  const { error: updateError } = await supabase.from('tasks').update({ reference_image_path: path }).in('id', taskIds)
+  if (updateError) {
+    await supabase.storage.from(TASK_REFERENCE_BUCKET).remove([path])
+    throw updateError
+  }
+  return path
+}
 
 export interface TaskFilters {
   assignee?: string
@@ -32,13 +80,13 @@ export async function listTasks(filters: TaskFilters = {}) {
   if (filters.search) q = q.ilike('title', `%${filters.search}%`)
   const { data, error } = await q
   if (error) throw error
-  return (data ?? []) as unknown as TaskWithRelations[]
+  return ((data ?? []) as unknown as TaskWithRelations[]).map(withTaskImageUrls)
 }
 
 export async function getTask(id: string) {
   const { data, error } = await supabase.from('tasks').select(SELECT).eq('id', id).single()
   if (error) throw error
-  return data as unknown as TaskWithRelations
+  return withTaskImageUrls(data as unknown as TaskWithRelations)
 }
 
 export interface AssignmentInput {
@@ -156,7 +204,7 @@ export async function createPersonalTask(title: string, scheduledDate: string | 
     .select(SELECT)
     .single()
   if (error) throw error
-  return data as unknown as TaskWithRelations
+  return withTaskImageUrls(data as unknown as TaskWithRelations)
 }
 
 export async function updateTask(id: string, patch: Record<string, unknown>) {
@@ -187,6 +235,16 @@ export async function setDeliverableUrl(id: string, url: string | null) {
   if (error) throw error
 }
 
+export async function setTaskResultFolderUrl(taskId: string, url: string | null) {
+  const value = url?.trim()
+  const normalized = value && !/^https?:\/\//i.test(value) ? `https://${value}` : value
+  const { error } = await supabase.rpc('set_task_result_folder_url', {
+    p_task_id: taskId,
+    p_url: normalized || null,
+  })
+  if (error) throw error
+}
+
 export async function setDeliverableProgress(id: string, completed: number) {
   const { error } = await supabase
     .from('task_deliverables')
@@ -202,7 +260,7 @@ export async function myWeek(from: string, to: string) {
   if (!ids.length) return [] as TaskWithRelations[]
   const { data: full, error: e2 } = await supabase.from('tasks').select(SELECT).in('id', ids)
   if (e2) throw e2
-  return (full ?? []) as unknown as TaskWithRelations[]
+  return ((full ?? []) as unknown as TaskWithRelations[]).map(withTaskImageUrls)
 }
 
 export async function completeTask(taskId: string) {
