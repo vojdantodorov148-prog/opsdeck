@@ -92,6 +92,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
   const productBrief = task.product?.brief?.trim() ?? ''
   const productImageUrl = task.reference_image_url || task.product?.images?.[0]?.public_url || null
   const productImageSource = task.reference_image_url ? 'Слика додадена на задачата' : 'Главна слика од ПРОИЗВОДИ'
+  const productImageName = task.product?.name ?? 'product-image'
 
   async function copyProductBrief() {
     if (!productBrief) return
@@ -112,7 +113,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
       const objectUrl = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
       anchor.href = objectUrl
-      anchor.download = imageDownloadName(task.product?.name ?? 'product-image', blob.type)
+      anchor.download = imageDownloadName(productImageName, blob.type)
       document.body.appendChild(anchor)
       anchor.click()
       anchor.remove()
