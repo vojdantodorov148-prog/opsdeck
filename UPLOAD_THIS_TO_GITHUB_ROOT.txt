@@ -1,0 +1,16 @@
+OPS DECK 0015 ROOT-READY
+
+Upload ALL files and folders from this directory directly into the ROOT of the existing GitHub repository.
+Do not upload the OPS-DECK-0015-ROOT-READY folder itself as a subfolder.
+
+Critical file that MUST show as changed in GitHub before committing:
+src/services/tasks.ts
+
+This file contains these required exports:
+- attachTaskReferenceImage
+- setTaskResultFolderUrl
+
+Commit suggestion:
+OPS DECK 0015 root-ready complete fix
+
+Do not run Supabase SQL again if revised 0015 SQL was already successful.
