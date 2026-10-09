@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ImageIcon, Plus, Search, Trash2 } from 'lucide-react'
+import { Check, ImageIcon, Plus, Search, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/Modal'
 import { Avatar } from '@/components/ui/Avatar'
@@ -10,7 +10,7 @@ import {
   addProductAdHeadline, addProductAngle, getProduct, listProducts,
 } from '@/services/products'
 import { listMarkets, listProfiles } from '@/services/reference'
-import { createAssignmentBundle } from '@/services/tasks'
+import { attachTaskReferenceImage, createAssignmentBundle } from '@/services/tasks'
 import {
   DELIVERABLE_GROUPS, DELIVERABLE_LABELS, describeDeliverables, departmentFor,
   type DeliverableDraft,
@@ -63,6 +63,7 @@ export function GiveTaskModal() {
   const [dueDate, setDueDate] = useState('')
   const [dueTime, setDueTime] = useState('')
   const [notes, setNotes] = useState('')
+  const [referenceImage, setReferenceImage] = useState<File | null>(null)
   const [items, setItems] = useState<WorkItem[]>([blankItem()])
 
   const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: listProducts, enabled: open })
@@ -83,6 +84,7 @@ export function GiveTaskModal() {
     setDueDate('')
     setDueTime('')
     setNotes('')
+    setReferenceImage(null)
     setItems([blankItem()])
   }, [open, context.productId, context.marketId])
 
@@ -203,7 +205,7 @@ export function GiveTaskModal() {
   const save = useMutation({
     mutationFn: async () => {
       const deliverables = await prepareDeliverables()
-      return createAssignmentBundle({
+      const ids = await createAssignmentBundle({
         productId: productId || null,
         productName: product?.name ?? null,
         markets: selectedMarkets.map(({ id, name, code }) => ({ id, name, code })),
@@ -214,6 +216,14 @@ export function GiveTaskModal() {
         notes: notes || null,
         testId: context.testId ?? null,
       })
+      if (referenceImage) {
+        try {
+          await attachTaskReferenceImage(ids, referenceImage)
+        } catch (error) {
+          toast.error(`Задачата е креирана, но сликата не се прикачи: ${error instanceof Error ? error.message : 'непозната грешка'}`)
+        }
+      }
+      return ids
     },
     onSuccess: (ids) => {
       qc.invalidateQueries({ queryKey: ['tasks'] })
@@ -312,6 +322,34 @@ export function GiveTaskModal() {
                   Отвори го главниот продукт линк ↗
                 </a>
               )}
+
+              <div className="mt-4 border-t border-line pt-4">
+                <Field label="Слика за задачата" optional>
+                  {referenceImage ? (
+                    <div className="flex items-center gap-3 rounded-xl border border-teal-200 bg-teal-50/55 p-3">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-teal-100 bg-white text-teal-700"><ImageIcon size={16} /></span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{referenceImage.name}</p>
+                        <p className="mt-0.5 text-xs text-ink-soft">Оваа слика ќе има предност пред главната product image.</p>
+                      </div>
+                      <button type="button" className="btn-ghost h-8 px-2.5 text-xs" onClick={() => setReferenceImage(null)}>Тргни</button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="btn-quiet h-10 cursor-pointer px-3 text-sm">
+                        <Upload size={15} /> Upload слика
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => setReferenceImage(event.target.files?.[0] ?? null)}
+                        />
+                      </label>
+                      <p className="text-xs text-ink-soft">Ако не додадеш слика, задачата автоматски ќе ја користи главната слика од ПРОИЗВОДИ.</p>
+                    </div>
+                  )}
+                </Field>
+              </div>
             </Field>
           </div>
 

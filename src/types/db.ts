@@ -129,11 +129,16 @@ export interface Task {
   is_private: boolean
   created_at: string
   completed_at: string | null
+  reference_image_path: string | null
+  result_folder_url: string | null
 }
 
 export interface TaskWithRelations extends Task {
   deliverables: Deliverable[]
-  product?: Pick<Product, 'id' | 'name' | 'main_url'> | null
+  reference_image_url?: string | null
+  product?: (Pick<Product, 'id' | 'name' | 'main_url' | 'brief'> & {
+    images?: Array<Pick<ProductImage, 'id' | 'storage_path' | 'sort_order'> & { public_url?: string }>
+  }) | null
   market?: Pick<Market, 'id' | 'code' | 'name'> | null
   assignee?: Pick<Profile, 'id' | 'full_name' | 'avatar_url'> | null
   creator?: Pick<Profile, 'id' | 'full_name'> | null
