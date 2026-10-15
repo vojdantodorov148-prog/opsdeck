@@ -103,8 +103,8 @@ export function ProductDetail() {
       <div className="mt-5 grid grid-cols-2 md:grid-cols-5 gap-3">
         <Stat label="SKU" value={product.sku ?? '—'} />
         <Stat label="Продажна" value={product.selling_price ? `${product.selling_price} ${product.currency}` : '—'} />
-        <Stat label="Break-even CPA" value={product.break_even_cpa ?? '—'} />
-        <Stat label="Набавна (COGS)" value={product.cogs ?? '—'} />
+        <Stat label="Break-even CPA" value={product.break_even_cpa != null ? `${product.break_even_cpa} ${product.currency}` : '—'} />
+        <Stat label="Набавна (COGS)" value={product.cogs != null ? `${product.cogs} ${product.currency}` : '—'} />
         <Stat label="Бруто маржа" value={margin !== null ? `${margin.toFixed(2)} ${product.currency}` : '—'} />
       </div>
 
@@ -284,7 +284,7 @@ function EditProductModal({ open, onClose, product }: { open: boolean; onClose: 
   const { data: brands = [] } = useQuery({ queryKey: ['brands'], queryFn: listBrands, enabled: open })
   const [form, setForm] = useState(() => ({
     name: product.name, sku: product.sku ?? '', brand_id: product.brand_id ?? '',
-    selling_price: product.selling_price?.toString() ?? '', break_even_cpa: product.break_even_cpa?.toString() ?? '',
+    selling_price: product.selling_price?.toString() ?? '', currency: product.currency || 'EUR', break_even_cpa: product.break_even_cpa?.toString() ?? '',
     cogs: product.cogs?.toString() ?? '', status: product.status, main_url: product.main_url ?? '', brief: product.brief ?? '',
   }))
   const [angles, setAngles] = useState<ProductAngleInput[]>(() => (product.angles ?? []).map((angle) => ({ id: angle.id, title: angle.title, body: angle.body })))
@@ -299,6 +299,7 @@ function EditProductModal({ open, onClose, product }: { open: boolean; onClose: 
       sku: product.sku ?? '',
       brand_id: product.brand_id ?? '',
       selling_price: product.selling_price?.toString() ?? '',
+      currency: product.currency || 'EUR',
       break_even_cpa: product.break_even_cpa?.toString() ?? '',
       cogs: product.cogs?.toString() ?? '',
       status: product.status,
@@ -322,6 +323,7 @@ function EditProductModal({ open, onClose, product }: { open: boolean; onClose: 
         sku: form.sku.trim() || null,
         brand_id: form.brand_id,
         selling_price: form.selling_price ? Number(form.selling_price) : null,
+        currency: form.currency.trim().toUpperCase() || 'EUR',
         break_even_cpa: form.break_even_cpa ? Number(form.break_even_cpa) : null,
         cogs: form.cogs ? Number(form.cogs) : null,
         status: form.status,
@@ -366,8 +368,9 @@ function EditProductModal({ open, onClose, product }: { open: boolean; onClose: 
             <option value="">Одбери бренд *</option>
             {brands.map((brand) => <option key={brand.id} value={brand.id}>{brandDisplayName(brand.slug, brand.name)}</option>)}
           </select>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <input className="field" placeholder="Продажна" inputMode="decimal" value={form.selling_price} onChange={(event) => setForm({ ...form, selling_price: event.target.value })} />
+            <input className="field uppercase" placeholder="Валута (EUR/MKD)" maxLength={8} value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value.toUpperCase() })} />
             <input className="field" placeholder="Break-even CPA" inputMode="decimal" value={form.break_even_cpa} onChange={(event) => setForm({ ...form, break_even_cpa: event.target.value })} />
             <input className="field" placeholder="Набавна (COGS)" inputMode="decimal" value={form.cogs} onChange={(event) => setForm({ ...form, cogs: event.target.value })} />
           </div>

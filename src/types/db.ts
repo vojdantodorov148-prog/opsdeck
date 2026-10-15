@@ -121,6 +121,7 @@ export interface Task {
   priority: number | null
   due_date: string | null
   due_time: string | null
+  due_at?: string | null
   scheduled_date: string | null
   scheduled_time: string | null
   sort_order: number
