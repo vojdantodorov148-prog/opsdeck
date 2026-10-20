@@ -247,6 +247,7 @@ async function createProduct(admin: SupabaseClient, body: unknown): Promise<ApiR
   const brand = brandName ? await resolveBrand(admin, brandName) : null
   if (brandName && !brand) errors.brand = `Use one of: ${PRODUCT_BRANDS.join(', ')}`
   if (Object.keys(errors).length) return apiError(400, 'validation_error', 'Validation failed.', errors)
+  const productCurrency = (brand?.slug === 'veterce' ? 'MKD' : currency) as string
 
   const productId = crypto.randomUUID()
   const uploaded: Array<{ path: string; rowId: string }> = []
@@ -256,7 +257,7 @@ async function createProduct(admin: SupabaseClient, body: unknown): Promise<ApiR
       name,
       brand_id: brand!.id,
       selling_price: price,
-      currency,
+      currency: productCurrency,
       sku,
       brief,
       main_url: mainLink,

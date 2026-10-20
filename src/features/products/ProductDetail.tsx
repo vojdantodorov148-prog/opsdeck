@@ -26,6 +26,10 @@ function brandDisplayName(slug: string | undefined, name: string) {
   return name
 }
 
+function productCurrencyLabel(product: ProductWithRelations) {
+  return product.brand?.slug === 'veterce' ? 'ден.' : product.currency
+}
+
 export function ProductDetail() {
   const { id = '' } = useParams()
   const actions = useActions()
@@ -102,10 +106,10 @@ export function ProductDetail() {
 
       <div className="mt-5 grid grid-cols-2 md:grid-cols-5 gap-3">
         <Stat label="SKU" value={product.sku ?? '—'} />
-        <Stat label="Продажна" value={product.selling_price ? `${product.selling_price} ${product.currency}` : '—'} />
-        <Stat label="Break-even CPA" value={product.break_even_cpa != null ? `${product.break_even_cpa} ${product.currency}` : '—'} />
-        <Stat label="Набавна (COGS)" value={product.cogs != null ? `${product.cogs} ${product.currency}` : '—'} />
-        <Stat label="Бруто маржа" value={margin !== null ? `${margin.toFixed(2)} ${product.currency}` : '—'} />
+        <Stat label="Продажна" value={product.selling_price ? `${product.selling_price} ${productCurrencyLabel(product)}` : '—'} />
+        <Stat label="Break-even CPA" value={product.break_even_cpa != null ? `${product.break_even_cpa} ${productCurrencyLabel(product)}` : '—'} />
+        <Stat label="Набавна (COGS)" value={product.cogs != null ? `${product.cogs} ${productCurrencyLabel(product)}` : '—'} />
+        <Stat label="Бруто маржа" value={margin !== null ? `${margin.toFixed(2)} ${productCurrencyLabel(product)}` : '—'} />
       </div>
 
       <nav className="mt-6 flex gap-1 border-b border-line" role="tablist">
@@ -291,6 +295,8 @@ function EditProductModal({ open, onClose, product }: { open: boolean; onClose: 
   const [headlines, setHeadlines] = useState<ProductHeadlineInput[]>(() => (product.headlines ?? []).map((item) => ({ id: item.id, headline: item.headline })))
   const [newImages, setNewImages] = useState<File[]>([])
   const [removedImages, setRemovedImages] = useState<ProductImage[]>([])
+  const selectedBrand = brands.find((brand) => brand.id === form.brand_id)
+  const isVeterche = selectedBrand?.slug === 'veterce'
 
   useEffect(() => {
     if (!open) return
@@ -323,7 +329,7 @@ function EditProductModal({ open, onClose, product }: { open: boolean; onClose: 
         sku: form.sku.trim() || null,
         brand_id: form.brand_id,
         selling_price: form.selling_price ? Number(form.selling_price) : null,
-        currency: form.currency.trim().toUpperCase() || 'EUR',
+        currency: isVeterche ? 'MKD' : (form.currency.trim().toUpperCase() || 'EUR'),
         break_even_cpa: form.break_even_cpa ? Number(form.break_even_cpa) : null,
         cogs: form.cogs ? Number(form.cogs) : null,
         status: form.status,
@@ -364,13 +370,24 @@ function EditProductModal({ open, onClose, product }: { open: boolean; onClose: 
             <input className="field" placeholder="Име на производ *" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
             <input className="field" placeholder="SKU" value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} />
           </div>
-          <select className="field" value={form.brand_id} onChange={(event) => setForm({ ...form, brand_id: event.target.value })}>
+          <select className="field" value={form.brand_id} onChange={(event) => {
+            const brandId = event.target.value
+            const brand = brands.find((item) => item.id === brandId)
+            setForm({ ...form, brand_id: brandId, ...(brand?.slug === 'veterce' ? { currency: 'MKD' } : {}) })
+          }}>
             <option value="">Одбери бренд *</option>
             {brands.map((brand) => <option key={brand.id} value={brand.id}>{brandDisplayName(brand.slug, brand.name)}</option>)}
           </select>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <input className="field" placeholder="Продажна" inputMode="decimal" value={form.selling_price} onChange={(event) => setForm({ ...form, selling_price: event.target.value })} />
-            <input className="field uppercase" placeholder="Валута (EUR/MKD)" maxLength={8} value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value.toUpperCase() })} />
+            <input
+              className="field uppercase disabled:cursor-not-allowed disabled:opacity-70"
+              placeholder="Валута (EUR/MKD)"
+              maxLength={8}
+              value={isVeterche ? 'ден.' : form.currency}
+              disabled={isVeterche}
+              onChange={(event) => setForm({ ...form, currency: event.target.value.toUpperCase() })}
+            />
             <input className="field" placeholder="Break-even CPA" inputMode="decimal" value={form.break_even_cpa} onChange={(event) => setForm({ ...form, break_even_cpa: event.target.value })} />
             <input className="field" placeholder="Набавна (COGS)" inputMode="decimal" value={form.cogs} onChange={(event) => setForm({ ...form, cogs: event.target.value })} />
           </div>

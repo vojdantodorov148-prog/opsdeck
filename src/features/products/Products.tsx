@@ -17,6 +17,10 @@ function brandDisplayName(slug: string | undefined, name: string) {
   return name
 }
 
+function productCurrencyLabel(product: ProductWithRelations) {
+  return product.brand?.slug === 'veterce' ? 'ден.' : product.currency
+}
+
 export function Products() {
   const { can } = useSession()
   const qc = useQueryClient()
@@ -142,9 +146,9 @@ export function Products() {
                     </td>
                     <td className="px-4 py-3 text-ink-soft">{product.brand ? brandDisplayName(product.brand.slug, product.brand.name) : '—'}</td>
                     <td className="px-4 py-3 font-mono text-xs text-ink-soft">{product.sku ?? '—'}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{product.selling_price ? `${product.selling_price} ${product.currency}` : '—'}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{product.break_even_cpa != null ? `${product.break_even_cpa} ${product.currency}` : '—'}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{product.cogs != null ? `${product.cogs} ${product.currency}` : '—'}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{product.selling_price ? `${product.selling_price} ${productCurrencyLabel(product)}` : '—'}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{product.break_even_cpa != null ? `${product.break_even_cpa} ${productCurrencyLabel(product)}` : '—'}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{product.cogs != null ? `${product.cogs} ${productCurrencyLabel(product)}` : '—'}</td>
                     <td className="px-4 py-3"><Badge className="bg-panel border-line text-ink-soft">{PRODUCT_STATUS[product.status]}</Badge></td>
                     {can('products.manage') && (
                       <td className="px-3 py-3 text-right">
@@ -201,6 +205,8 @@ function AddProductModal({ open, onClose }: { open: boolean; onClose: () => void
   const [angles, setAngles] = useState<ProductAngleInput[]>([])
   const [headlines, setHeadlines] = useState<ProductHeadlineInput[]>([])
   const [images, setImages] = useState<File[]>([])
+  const selectedBrand = brands.find((brand) => brand.id === form.brand_id)
+  const isVeterche = selectedBrand?.slug === 'veterce'
 
   useEffect(() => {
     if (open) return
@@ -217,7 +223,7 @@ function AddProductModal({ open, onClose }: { open: boolean; onClose: () => void
         sku: form.sku.trim() || null,
         brand_id: form.brand_id,
         selling_price: form.selling_price ? Number(form.selling_price) : null,
-        currency: form.currency.trim().toUpperCase() || 'EUR',
+        currency: isVeterche ? 'MKD' : (form.currency.trim().toUpperCase() || 'EUR'),
         break_even_cpa: form.break_even_cpa ? Number(form.break_even_cpa) : null,
         cogs: form.cogs ? Number(form.cogs) : null,
         status: form.status,
@@ -254,13 +260,24 @@ function AddProductModal({ open, onClose }: { open: boolean; onClose: () => void
             <input className="field" placeholder="Име на производ *" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
             <input className="field" placeholder="SKU" value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} />
           </div>
-          <select className="field" value={form.brand_id} onChange={(event) => setForm({ ...form, brand_id: event.target.value })}>
+          <select className="field" value={form.brand_id} onChange={(event) => {
+            const brandId = event.target.value
+            const brand = brands.find((item) => item.id === brandId)
+            setForm({ ...form, brand_id: brandId, ...(brand?.slug === 'veterce' ? { currency: 'MKD' } : {}) })
+          }}>
             <option value="">Одбери бренд *</option>
             {brands.map((brand) => <option key={brand.id} value={brand.id}>{brandDisplayName(brand.slug, brand.name)}</option>)}
           </select>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <input className="field" placeholder="Продажна" inputMode="decimal" value={form.selling_price} onChange={(event) => setForm({ ...form, selling_price: event.target.value })} />
-            <input className="field uppercase" placeholder="Валута (EUR/MKD)" maxLength={8} value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value.toUpperCase() })} />
+            <input
+              className="field uppercase disabled:cursor-not-allowed disabled:opacity-70"
+              placeholder="Валута (EUR/MKD)"
+              maxLength={8}
+              value={isVeterche ? 'ден.' : form.currency}
+              disabled={isVeterche}
+              onChange={(event) => setForm({ ...form, currency: event.target.value.toUpperCase() })}
+            />
             <input className="field" placeholder="Break-even CPA" inputMode="decimal" value={form.break_even_cpa} onChange={(event) => setForm({ ...form, break_even_cpa: event.target.value })} />
             <input className="field" placeholder="Набавна (COGS)" inputMode="decimal" value={form.cogs} onChange={(event) => setForm({ ...form, cogs: event.target.value })} />
           </div>
