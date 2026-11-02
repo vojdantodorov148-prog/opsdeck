@@ -31,3 +31,6 @@
 
 [functions."generate-recurring-finance"]
   schedule = "15 0 * * *"
+
+[functions."telegram-dispatch"]
+  schedule = "* * * * *"
