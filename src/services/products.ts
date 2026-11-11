@@ -248,6 +248,19 @@ export async function deleteProduct(id: string) {
     const { error: storageError } = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(images.map((image) => image.storage_path))
     if (storageError) throw storageError
   }
+
+  const { data: untested, error: untestedError } = await supabase
+    .from('product_untested_creatives')
+    .select('storage_path')
+    .eq('product_id', id)
+    .not('storage_path', 'is', null)
+  if (untestedError && untestedError.code !== '42P01') throw untestedError
+  const creativePaths = (untested ?? []).flatMap((item) => item.storage_path ? [item.storage_path] : [])
+  if (creativePaths.length) {
+    const { error: storageError } = await supabase.storage.from('untested-creatives').remove(creativePaths)
+    if (storageError) throw storageError
+  }
+
   const { error } = await supabase.from('products').delete().eq('id', id)
   if (error) throw error
 }

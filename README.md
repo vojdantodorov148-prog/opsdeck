@@ -289,6 +289,11 @@ It exposes these tools:
 - `get_product`
 - `create_product`
 - `update_product`
+- `list_untested_creatives`
+- `add_untested_drive_link`
+- `import_untested_creative_url`
+- `get_untested_creative`
+- `mark_untested_creative_testing`
 - `list_team`
 - `list_tasks`
 - `get_task`
@@ -323,3 +328,64 @@ Transport: Streamable HTTP
 ```
 
 `OPS_DECK_API_KEY` stays server-side on Netlify and is never sent to the MCP client.
+
+
+## Untested creatives (`/api/v1/products/:id/untested-creatives`)
+
+Each product has a private **Нетестирани креативи** library for ready-made creatives that are not yet launched.
+
+List them:
+
+```bash
+curl -sS 'https://ops-deck.netlify.app/api/v1/products/PRODUCT_ID/untested-creatives' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+Add a Google Drive folder reference (does not consume Ops Deck Storage):
+
+```bash
+curl -sS -X POST 'https://ops-deck.netlify.app/api/v1/products/PRODUCT_ID/untested-creatives' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: alpine-sleep-drive-001' \
+  -d '{"kind":"drive","url":"https://drive.google.com/drive/folders/...","label":"Sleep statics batch 4"}'
+```
+
+Import an image/video from a public temporary URL. The server downloads and stores the **original bytes without recompression**:
+
+```bash
+curl -sS -X POST 'https://ops-deck.netlify.app/api/v1/products/PRODUCT_ID/untested-creatives' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: alpine-sleep-creative-001' \
+  -d '{"kind":"file_url","url":"https://example.com/creative.mp4","file_name":"sleep-angle-3.mp4"}'
+```
+
+Remote API import is capped at 50 MB; larger video batches should be linked through Google Drive. The browser UI also uploads original bytes without recompression.
+
+Get one item (uploaded files return a fresh signed download URL):
+
+```bash
+curl -sS 'https://ops-deck.netlify.app/api/v1/products/PRODUCT_ID/untested-creatives/CREATIVE_ID' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+Mark it as launched for testing. The first `testing=true` starts a fixed 24-hour retention timer; repeating the same call does not extend the timer:
+
+```bash
+curl -sS -X PATCH 'https://ops-deck.netlify.app/api/v1/products/PRODUCT_ID/untested-creatives/CREATIVE_ID' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"testing":true}'
+```
+
+Cancel pending deletion before the 24 hours expire:
+
+```bash
+curl -sS -X PATCH 'https://ops-deck.netlify.app/api/v1/products/PRODUCT_ID/untested-creatives/CREATIVE_ID' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"testing":false}'
+```
+
+A scheduled cleanup runs every 15 minutes. Therefore deletion happens after the 24-hour mark, normally within the following 15 minutes. Uploaded files are removed from Supabase Storage and their DB row is deleted. Drive references only remove the Ops Deck reference; the Google Drive file/folder itself is never deleted.

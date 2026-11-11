@@ -6,6 +6,18 @@
   NODE_VERSION = "22"
 
 [[redirects]]
+  from = "/api/v1/products/:productId/untested-creatives/:creativeId"
+  to = "/.netlify/functions/untested-creatives-api?product_id=:productId&creative_id=:creativeId"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/v1/products/:productId/untested-creatives"
+  to = "/.netlify/functions/untested-creatives-api?product_id=:productId"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/v1/*"
   to = "/.netlify/functions/ops-api/:splat"
   status = 200
@@ -34,3 +46,6 @@
 
 [functions."telegram-dispatch"]
   schedule = "* * * * *"
+
+[functions."cleanup-untested-creatives"]
+  schedule = "*/15 * * * *"

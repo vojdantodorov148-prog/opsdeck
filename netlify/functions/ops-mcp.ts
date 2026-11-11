@@ -52,6 +52,64 @@ const TOOLS = [
     },
   },
   {
+    name: 'list_untested_creatives',
+    description: 'List the untested creative library for one product. Uploaded items include a fresh signed download URL; Drive items include their Drive URL.',
+    inputSchema: {
+      type: 'object', additionalProperties: false, required: ['product_id'],
+      properties: { product_id: { type: 'string', minLength: 1 } },
+    },
+  },
+  {
+    name: 'add_untested_drive_link',
+    description: 'Add a Google Drive folder/file link to a product untested-creative library. No file is copied into Ops Deck storage.',
+    inputSchema: {
+      type: 'object', additionalProperties: false, required: ['product_id', 'url'],
+      properties: {
+        product_id: { type: 'string', minLength: 1 },
+        url: { type: 'string', minLength: 1, maxLength: 4000 },
+        label: { type: ['string', 'null'], maxLength: 240 },
+        idempotency_key: { type: 'string', maxLength: 200, description: 'Stable key to make retries safe.' },
+      },
+    },
+  },
+  {
+    name: 'import_untested_creative_url',
+    description: 'Import an image/video from a public URL into a product untested-creative library. Ops Deck stores the original bytes without recompression. Maximum remote import size is 50 MB; use a Drive link for larger files.',
+    inputSchema: {
+      type: 'object', additionalProperties: false, required: ['product_id', 'file_url'],
+      properties: {
+        product_id: { type: 'string', minLength: 1 },
+        file_url: { type: 'string', minLength: 1, maxLength: 4000 },
+        file_name: { type: ['string', 'null'], maxLength: 255 },
+        label: { type: ['string', 'null'], maxLength: 240 },
+        idempotency_key: { type: 'string', maxLength: 200, description: 'Stable key to make retries safe.' },
+      },
+    },
+  },
+  {
+    name: 'get_untested_creative',
+    description: 'Get one untested creative with a fresh signed download URL for uploaded files, or the Drive URL for linked items.',
+    inputSchema: {
+      type: 'object', additionalProperties: false, required: ['product_id', 'creative_id'],
+      properties: {
+        product_id: { type: 'string', minLength: 1 },
+        creative_id: { type: 'string', minLength: 1 },
+      },
+    },
+  },
+  {
+    name: 'mark_untested_creative_testing',
+    description: 'Set or clear the "pushed to test" checkbox. Setting testing=true starts a fixed 24-hour deletion timer; repeating true does not reset the timer. testing=false cancels pending deletion.',
+    inputSchema: {
+      type: 'object', additionalProperties: false, required: ['product_id', 'creative_id', 'testing'],
+      properties: {
+        product_id: { type: 'string', minLength: 1 },
+        creative_id: { type: 'string', minLength: 1 },
+        testing: { type: 'boolean' },
+      },
+    },
+  },
+  {
     name: 'list_team',
     description: 'List active Ops Deck team members with IDs and names.',
     inputSchema: { type: 'object', additionalProperties: false, properties: {} },
@@ -192,6 +250,46 @@ async function callTool(request: Request, name: string, args: Record<string, unk
       data = await apiCall(request, 'PATCH', `/api/v1/products/${encodeURIComponent(String(id || ''))}`, body)
       break
     }
+    case 'list_untested_creatives':
+      data = await apiCall(request, 'GET', `/api/v1/products/${encodeURIComponent(String(args.product_id || ''))}/untested-creatives`)
+      break
+    case 'add_untested_drive_link': {
+      const { product_id, idempotency_key, url, label } = args
+      data = await apiCall(
+        request,
+        'POST',
+        `/api/v1/products/${encodeURIComponent(String(product_id || ''))}/untested-creatives`,
+        { kind: 'drive', url, label },
+        typeof idempotency_key === 'string' ? idempotency_key : undefined,
+      )
+      break
+    }
+    case 'import_untested_creative_url': {
+      const { product_id, idempotency_key, file_url, file_name, label } = args
+      data = await apiCall(
+        request,
+        'POST',
+        `/api/v1/products/${encodeURIComponent(String(product_id || ''))}/untested-creatives`,
+        { kind: 'file_url', url: file_url, file_name, label },
+        typeof idempotency_key === 'string' ? idempotency_key : undefined,
+      )
+      break
+    }
+    case 'get_untested_creative':
+      data = await apiCall(
+        request,
+        'GET',
+        `/api/v1/products/${encodeURIComponent(String(args.product_id || ''))}/untested-creatives/${encodeURIComponent(String(args.creative_id || ''))}`,
+      )
+      break
+    case 'mark_untested_creative_testing':
+      data = await apiCall(
+        request,
+        'PATCH',
+        `/api/v1/products/${encodeURIComponent(String(args.product_id || ''))}/untested-creatives/${encodeURIComponent(String(args.creative_id || ''))}`,
+        { testing: args.testing },
+      )
+      break
     case 'list_team':
       data = await apiCall(request, 'GET', '/api/v1/team')
       break
@@ -233,7 +331,7 @@ async function handleMessage(request: Request, message: JsonRpc) {
     return rpcResult(id, {
       protocolVersion: supported,
       capabilities: { tools: {} },
-      serverInfo: { name: 'ops-deck', version: '1.0.0' },
+      serverInfo: { name: 'ops-deck', version: '1.1.0' },
     })
   }
   if (message.method === 'notifications/initialized') return null

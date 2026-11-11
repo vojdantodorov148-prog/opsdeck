@@ -8,6 +8,7 @@ import { TaskList } from '@/features/tasks/TaskList'
 import { TaskDrawer } from '@/features/tasks/TaskDrawer'
 import { TestCellDrawer } from '@/features/testing/TestCellDrawer'
 import { AngleEditor, HeadlineEditor, ImagePicker } from '@/features/products/Products'
+import { UntestedCreatives } from '@/features/products/UntestedCreatives'
 import { deleteProduct, getProduct, listTests, updateProductBundle, type ProductAngleInput, type ProductHeadlineInput, type ProductWithRelations } from '@/services/products'
 import { listBrands, listMarkets } from '@/services/reference'
 import { listTasks } from '@/services/tasks'
@@ -18,7 +19,7 @@ import { useSession } from '@/features/auth/session'
 import { toast } from 'sonner'
 import type { ProductImage, ProductStatus } from '@/types/db'
 
-const TABS = ['Преглед', 'Пазари', 'Линкови', 'Активна работа', 'Белешки'] as const
+const TABS = ['Преглед', 'Нетестирани креативи', 'Пазари', 'Линкови', 'Активна работа', 'Белешки'] as const
 
 function brandDisplayName(slug: string | undefined, name: string) {
   if (slug === 'alpine-patches') return 'Alpine'
@@ -112,12 +113,12 @@ export function ProductDetail() {
         <Stat label="Бруто маржа" value={margin !== null ? `${margin.toFixed(2)} ${productCurrencyLabel(product)}` : '—'} />
       </div>
 
-      <nav className="mt-6 flex gap-1 border-b border-line" role="tablist">
+      <nav className="mt-6 flex gap-1 overflow-x-auto border-b border-line scrollbar-thin" role="tablist">
         {TABS.map((tabName) => (
           <button
             key={tabName} role="tab" aria-selected={tab === tabName}
             onClick={() => setTab(tabName)}
-            className={`h-10 px-3 text-sm border-b-2 -mb-px transition ${tab === tabName ? 'border-teal-500 text-teal-700 font-medium' : 'border-transparent text-ink-soft hover:text-ink'}`}
+            className={`h-10 shrink-0 whitespace-nowrap px-3 text-sm border-b-2 -mb-px transition ${tab === tabName ? 'border-teal-500 text-teal-700 font-medium' : 'border-transparent text-ink-soft hover:text-ink'}`}
           >
             {tabName}
           </button>
@@ -192,6 +193,10 @@ export function ProductDetail() {
               </section>
             )}
           </div>
+        )}
+
+        {tab === 'Нетестирани креативи' && (
+          <UntestedCreatives productId={id} />
         )}
 
         {tab === 'Пазари' && (
