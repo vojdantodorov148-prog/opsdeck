@@ -1,0 +1,5 @@
+
+FULL BUILD PACKAGE
+Includes Update 0019 + Missing product ID hotfix.
+Upload the CONTENTS of this folder directly into the root of the existing GitHub repo.
+SQL 0019 has already been run; no additional SQL is required for this package.
